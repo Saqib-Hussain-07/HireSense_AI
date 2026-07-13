@@ -1,0 +1,20 @@
+# ─── Docker ignore for frontend ──────────────────────────────────────────────
+# The Dockerfile has two stages: build (Node) → serve (nginx).
+# This file tells Docker what NOT to send to the build context.
+
+node_modules/
+dist/
+npm-debug.log*
+.env
+.env.*
+!.env.example
+
+# Editor and OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Git
+.git/
+.gitignore

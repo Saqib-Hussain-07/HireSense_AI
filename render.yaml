@@ -1,0 +1,92 @@
+# ─── HireSense AI — Render.com Deployment Config ─────────────────────────────
+# Deploy both services on Render with one `render.yaml` push.
+# https://render.com/docs/yaml-spec
+#
+# Setup:
+#   1. Push this repo to GitHub
+#   2. Connect repo to Render
+#   3. Render auto-detects this file and creates both services
+#   4. Add environment variables in the Render dashboard (see DEPLOYMENT.md)
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Backend: Web Service (Node.js) ──────────────────────────────────────────
+  - type: web
+    name: hiresense-api
+    runtime: node
+    region: oregon
+    plan: free                       # upgrade to starter ($7/mo) for always-on
+    rootDir: backend
+    buildCommand: npm ci --omit=dev
+    startCommand: node src/server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000                 # Render assigns its own port; 10000 is the default
+      - key: CLIENT_ORIGIN
+        value: https://hiresense-app.onrender.com   # update to your frontend URL
+      - key: MONGO_URI
+        fromDatabase:
+          name: hiresense-mongo
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true          # Render generates a secure random value
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      # ── AI providers ────────────────────────────────────────────────────
+      - key: GEMINI_API_KEY
+        sync: false                  # Set manually in Render dashboard
+      - key: GROQ_API_KEY
+        sync: false
+      - key: WHISPER_API_KEY
+        sync: false
+      # ── Voice ───────────────────────────────────────────────────────────
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: ELEVENLABS_VOICE_ID
+        sync: false
+      # ── File storage ────────────────────────────────────────────────────
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      # ── Auth ────────────────────────────────────────────────────────────
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+
+  # ── Frontend: Static Site (Vite build → CDN) ─────────────────────────────
+  - type: web
+    name: hiresense-app
+    runtime: static
+    region: oregon
+    plan: free
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    headers:
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+    routes:
+      # API and WebSocket go to the backend service
+      - type: rewrite
+        source: /api/*
+        destination: https://hiresense-api.onrender.com/api/:splat
+      # SPA fallback — all other routes render index.html
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://hiresense-api.onrender.com
+
+# ── Managed Database ──────────────────────────────────────────────────────────
+databases:
+  - name: hiresense-mongo
+    databaseName: hiresense-ai
+    plan: free                       # 256 MB, shared — upgrade for production load

@@ -1,0 +1,26 @@
+{
+  "name": "hiresense-ai",
+  "version": "1.0.0",
+  "description": "HireSense AI — Voice-first AI interview coaching platform",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "concurrently --names \"API,WEB\" --prefix-colors \"cyan,magenta\" \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\"",
+    "build": "npm run build --workspace=frontend",
+    "test": "npm run test --workspace=backend",
+    "install:all": "npm install",
+    "check:apis": "node backend/scripts/checkApis.js",
+    "seed": "npm run seed --workspace=backend",
+    "lint": "echo \"No lint config yet — add eslint to add linting.\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

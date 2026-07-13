@@ -1,0 +1,495 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useVoice } from '../hooks/useVoice.js';
+import { useInterviewSocket } from '../hooks/useInterviewSocket.js';
+import { api } from '../lib/api';
+
+/* ── Waveform animation (AI speaking) ──────────────────────────────────── */
+function AIWaveform({ active }) {
+  return (
+    <div className="flex items-end gap-[3px] h-8" aria-label="AI speaking">
+      {[0.6, 1, 0.75, 1, 0.5, 0.85, 0.65, 1, 0.7, 0.9, 0.55, 0.8].map((h, i) => (
+        <span
+          key={i}
+          className="rounded-full w-[3px] transition-all"
+          style={{
+            height: active ? `${Math.round(h * 28)}px` : '4px',
+            background: active
+              ? `rgba(232, 169, 75, ${0.5 + h * 0.5})`
+              : 'var(--color-hairline)',
+            animation: active ? `wave-bar ${0.8 + (i % 4) * 0.15}s ease-in-out infinite` : 'none',
+            animationDelay: active ? `${i * 0.07}s` : '0s',
+            transition: 'height 0.3s ease',
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* ── Mic pulse ring (user speaking) ────────────────────────────────────── */
+function MicPulse({ active }) {
+  return (
+    <div className="relative flex items-center justify-center">
+      {/* Outer pulse rings */}
+      {active && (
+        <>
+          <span className="absolute w-20 h-20 rounded-full border border-signal/30 animate-ping-slow" />
+          <span className="absolute w-14 h-14 rounded-full border border-signal/50 animate-ping-slower" />
+        </>
+      )}
+      {/* Mic icon circle */}
+      <div
+        className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
+          active
+            ? 'bg-signal shadow-[0_0_20px_rgba(95,184,168,0.4)]'
+            : 'bg-panel2 border border-hairline'
+        }`}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+          stroke={active ? 'var(--color-ink)' : 'var(--color-muted)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8"  y1="23" x2="16" y2="23"/>
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+/* ── Transcript bubble ──────────────────────────────────────────────────── */
+function Bubble({ role, text, isInterim }) {
+  const isAI = role === 'ai';
+  return (
+    <div className={`flex gap-3 ${isAI ? 'justify-start' : 'justify-end'}`}>
+      {isAI && (
+        <div className="w-7 h-7 rounded-full bg-onair/20 border border-onair/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+          <span className="text-onair text-xs font-bold">AI</span>
+        </div>
+      )}
+      <div
+        className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed transition-all duration-200 ${
+          isAI
+            ? 'bg-panel2 text-text rounded-tl-sm border border-hairline'
+            : `bg-signal/15 text-text rounded-tr-sm border ${
+                isInterim ? 'border-signal/20 opacity-70' : 'border-signal/30'
+              }`
+        }`}
+      >
+        {text}
+        {isInterim && (
+          <span className="inline-flex gap-0.5 ml-1.5 align-middle">
+            {[0, 1, 2].map(i => (
+              <span key={i} className="w-1 h-1 rounded-full bg-signal/60 animate-bounce"
+                style={{ animationDelay: `${i * 0.15}s` }} />
+            ))}
+          </span>
+        )}
+      </div>
+      {!isAI && (
+        <div className="w-7 h-7 rounded-full bg-signal/20 border border-signal/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5FB8A8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Score preview ──────────────────────────────────────────────────────── */
+function ScorePreview({ result }) {
+  const pct = result.finalScore || 0;
+  const color = pct >= 80 ? '#5FB8A8' : pct >= 55 ? '#E8A94B' : '#E1685A';
+  const label = pct >= 80 ? 'Good' : pct >= 55 ? 'Average' : 'Needs work';
+  return (
+    <div className="w-full bg-panel border border-hairline rounded-2xl p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium text-text">Answer scored</p>
+        <div className="flex items-center gap-2">
+          <span className="text-2xl font-display font-bold" style={{ color }}>{pct}</span>
+          <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ background: color + '22', color }}>{label}</span>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+        {Object.entries(result.rubricScores || {}).map(([k, v]) => (
+          <div key={k} className="bg-panel2 rounded-lg px-2.5 py-2">
+            <p className="text-faint font-mono uppercase mb-0.5">{k}</p>
+            <p className="text-text font-semibold">{v}</p>
+          </div>
+        ))}
+      </div>
+      {result.gapNotes && (
+        <p className="text-sm text-muted bg-panel2 rounded-lg px-3 py-2">{result.gapNotes}</p>
+      )}
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   Main Page
+──────────────────────────────────────────────────────────────────────── */
+export default function VoiceInterviewSessionPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  const { speak, startListening, stopListening, listening, aiSpeaking, speechSupported } = useVoice();
+
+  const [questionIndex,   setQuestionIndex]   = useState(0);
+  const [totalQuestions,  setTotalQuestions]  = useState(null);
+  const [lastResult,      setLastResult]      = useState(null);
+  const [complete,        setComplete]        = useState(false);
+  const [nudge,           setNudge]           = useState(false);
+  const [permError,       setPermError]       = useState(false);
+
+  // Transcript log — array of { role: 'ai'|'user', text, isInterim }
+  const [transcript, setTranscript] = useState([]);
+  // Live interim text from mic
+  const [interimText, setInterimText] = useState('');
+
+  const answerStartRef   = useRef(null);
+  const transcriptEndRef  = useRef(null);
+  const latestAnswerRef   = useRef(''); // accumulates the full spoken answer text
+
+  /* ── Helpers to append/update transcript ── */
+  function pushAI(text) {
+    setTranscript(prev => [...prev, { role: 'ai', text, id: Date.now() }]);
+  }
+
+  function pushUserFinal(text) {
+    // Replace any existing interim bubble with the final one
+    setTranscript(prev => {
+      const withoutInterim = prev.filter(m => !m.isInterim);
+      return [...withoutInterim, { role: 'user', text, id: Date.now() }];
+    });
+    setInterimText('');
+  }
+
+  /* ── Auto-scroll transcript ── */
+  useEffect(() => {
+    transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [transcript, interimText]);
+
+  /* ── Socket ── */
+  const { send, connected } = useInterviewSocket(id, {
+    question: (msg) => {
+      setQuestionIndex(msg.questionIndex);
+      setLastResult(null);
+      setNudge(false);
+      pushAI(msg.text);
+      speak(msg.text);
+    },
+    scored: (msg) => setLastResult(msg.result),
+    followup: (msg) => {
+      pushAI(msg.text);
+      speak(msg.text);
+    },
+    pushback: (msg) => {
+      pushAI(`⚡ ${msg.text}`);
+      speak(msg.text);
+    },
+    silence_nudge: () => {
+      const nudgeText = "Take your time — I'm still here whenever you're ready.";
+      setNudge(true);
+      pushAI(nudgeText);
+      speak(nudgeText);
+    },
+    auto_advance: () => setNudge(false),
+    session_complete: () => setComplete(true),
+    error: (msg) => console.error('[interview ws error]', msg.message),
+  });
+
+  /* ── Load session meta ── */
+  useEffect(() => {
+    api.getInterview(id).then((session) => {
+      setTotalQuestions(session.questions.length);
+      setQuestionIndex(session.currentQuestionIndex);
+    });
+  }, [id]);
+
+  /* ── Mic control ── */
+  async function handleStartAnswer() {
+    // Request mic permission explicitly so we can surface the error
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      setPermError(true);
+      return;
+    }
+    setPermError(false);
+    answerStartRef.current = Date.now();
+    latestAnswerRef.current = '';   // reset for this answer turn
+    setLastResult(null);
+    setInterimText('');
+
+    startListening(
+      // partial — live interim preview (replaces the single interim bubble)
+      (partial) => {
+        setInterimText(partial);
+        send({ type: 'transcript_partial', questionIndex, text: partial });
+      },
+      // final segment — Chrome fires this per speech pause, NOT just at the end.
+      // Keep updating interimText so there's always ONE replaceable bubble.
+      // Never call pushUserFinal here — that creates a new permanent bubble each time.
+      (finalText) => {
+        latestAnswerRef.current = finalText; // accumulate the full running answer
+        setInterimText(finalText);           // show as interim (still replaceable)
+      },
+    );
+  }
+
+  function handleDoneAnswering() {
+    // Capture the answer BEFORE stopListening clears state.
+    // Priority: accumulated finalBuffer > last interim > last user bubble.
+    const finalText =
+      latestAnswerRef.current ||
+      interimText ||
+      [...transcript].reverse().find((m) => m.role === 'user')?.text ||
+      '';
+
+    stopListening();
+    if (finalText) pushUserFinal(finalText);
+
+    const durationSeconds = answerStartRef.current
+      ? (Date.now() - answerStartRef.current) / 1000
+      : undefined;
+
+    send({ type: 'transcript_final', questionIndex, text: finalText, durationSeconds });
+  }
+
+  function handleRedo() {
+    setLastResult(null);
+    setInterimText('');
+    handleStartAnswer();
+  }
+
+  function handleNext() {
+    send({ type: 'advance', questionIndex });
+  }
+
+  async function handleFinish() {
+    await api.finishInterview(id);
+    navigate(`/interview/${id}/report`);
+  }
+
+  /* ── Complete screen ── */
+  if (complete) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center gap-5 bg-ink">
+        <div className="w-16 h-16 rounded-full bg-signal/20 border border-signal/40 flex items-center justify-center mb-2">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5FB8A8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <p className="text-2xl font-display font-semibold text-text">Session complete</p>
+        <p className="text-muted text-sm text-center max-w-sm">
+          Your report is ready with scores, evidence quotes, and improved answers.
+        </p>
+        <button
+          onClick={handleFinish}
+          className="bg-onair text-ink font-semibold rounded-xl px-6 py-3 text-sm hover:bg-onair2 transition-colors mt-2"
+        >
+          View session report →
+        </button>
+      </div>
+    );
+  }
+
+  const currentAIText = transcript.findLast?.(m => m.role === 'ai')?.text || '';
+
+  return (
+    <div className="h-screen flex flex-col bg-ink overflow-hidden">
+
+      {/* ── Top bar ── */}
+      <div className="shrink-0 px-6 py-3 border-b border-hairline flex items-center justify-between bg-panel">
+        <div className="flex items-center gap-3">
+          <span className={`w-2 h-2 rounded-full ${connected ? 'bg-signal' : 'bg-alert'}`} />
+          <span className="text-xs font-mono text-faint">{connected ? 'live' : 'reconnecting…'}</span>
+        </div>
+
+        {/* Progress */}
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1.5">
+            {Array.from({ length: totalQuestions || 5 }).map((_, i) => (
+              <span
+                key={i}
+                className="w-2 h-2 rounded-full transition-all duration-300"
+                style={{
+                  background: i < questionIndex
+                    ? '#5FB8A8'
+                    : i === questionIndex
+                    ? '#E8A94B'
+                    : 'var(--color-hairline)',
+                }}
+              />
+            ))}
+          </div>
+          <span className="text-xs font-mono text-faint">
+            {questionIndex + 1}{totalQuestions ? ` / ${totalQuestions}` : ''}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Body: two-column layout ── */}
+      <div className="flex-1 flex overflow-hidden">
+
+        {/* ── Left: AI visual + controls ── */}
+        <div className="w-80 shrink-0 border-r border-hairline flex flex-col items-center justify-between p-6 bg-panel">
+
+          {/* AI avatar + waveform */}
+          <div className="flex flex-col items-center gap-4 mt-6">
+            <div className={`relative w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500 ${
+              aiSpeaking
+                ? 'bg-onair/20 border-2 border-onair shadow-[0_0_30px_rgba(232,169,75,0.3)]'
+                : 'bg-panel2 border-2 border-hairline'
+            }`}>
+              {/* AI logo */}
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke={aiSpeaking ? '#E8A94B' : 'var(--color-faint)'} strokeWidth="1.5"/>
+                <path d="M8 12c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4"
+                  stroke={aiSpeaking ? '#E8A94B' : 'var(--color-faint)'} strokeWidth="1.5" strokeLinecap="round"/>
+                <circle cx="12" cy="12" r="2" fill={aiSpeaking ? '#E8A94B' : 'var(--color-faint)'}/>
+              </svg>
+              {/* Pulse ring when speaking */}
+              {aiSpeaking && (
+                <span className="absolute inset-0 rounded-full border-2 border-onair/50 animate-ping" />
+              )}
+            </div>
+
+            <div className="flex flex-col items-center gap-1">
+              <p className="text-xs font-mono text-faint uppercase">AI Interviewer</p>
+              <p className="text-xs text-muted">{aiSpeaking ? 'Speaking…' : 'Listening'}</p>
+            </div>
+
+            <AIWaveform active={aiSpeaking} />
+          </div>
+
+          {/* Current question text */}
+          <div className="flex-1 flex flex-col justify-center w-full">
+            {currentAIText && (
+              <div className="bg-panel2 border border-hairline rounded-xl p-3 mt-4">
+                <p className="text-xs font-mono text-onair uppercase mb-1.5">Current question</p>
+                <p className="text-sm text-text leading-relaxed">{currentAIText.replace(/^⚡\s*/, '')}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Mic + controls */}
+          <div className="w-full space-y-3">
+
+            {!speechSupported && (
+              <p className="text-xs text-alert bg-alert/10 border border-alert/30 rounded-lg px-3 py-2 text-center">
+                Use Chrome or Edge for voice recognition
+              </p>
+            )}
+
+            {permError && (
+              <p className="text-xs text-alert bg-alert/10 border border-alert/30 rounded-lg px-3 py-2 text-center">
+                Microphone access denied — please allow it in your browser settings
+              </p>
+            )}
+
+            {nudge && !listening && (
+              <p className="text-xs text-faint font-mono text-center">still listening… take your time</p>
+            )}
+
+            {/* Mic button */}
+            <div className="flex flex-col items-center gap-3">
+              <MicPulse active={listening} />
+
+              {!listening ? (
+                <button
+                  onClick={handleStartAnswer}
+                  disabled={aiSpeaking}
+                  className="w-full flex items-center justify-center gap-2 bg-signal text-ink font-semibold rounded-xl px-4 py-2.5 text-sm hover:bg-signal/80 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Start speaking
+                </button>
+              ) : (
+                <button
+                  onClick={handleDoneAnswering}
+                  className="w-full flex items-center justify-center gap-2 bg-alert text-ink font-semibold rounded-xl px-4 py-2.5 text-sm hover:bg-alert/80 transition-colors"
+                >
+                  Done answering
+                </button>
+              )}
+            </div>
+
+            {/* Secondary actions */}
+            {lastResult && (
+              <div className="flex gap-2">
+                <button
+                  onClick={handleRedo}
+                  className="flex-1 text-sm text-muted hover:text-text border border-hairline rounded-xl px-3 py-2 transition-colors"
+                >
+                  Redo
+                </button>
+                <button
+                  onClick={handleNext}
+                  className="flex-1 text-sm bg-onair/10 text-onair border border-onair/30 rounded-xl px-3 py-2 hover:bg-onair/20 transition-colors"
+                >
+                  Next →
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── Right: transcript ── */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+
+          <div className="shrink-0 px-5 py-3 border-b border-hairline">
+            <p className="text-xs font-mono text-faint uppercase tracking-widest">Live Transcript</p>
+          </div>
+
+          {/* Transcript scroll area */}
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 custom-scroll">
+            {transcript.length === 0 && (
+              <div className="flex flex-col items-center justify-center h-full gap-3 opacity-50">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--color-faint)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <p className="text-sm text-faint">Transcript will appear here…</p>
+              </div>
+            )}
+
+            {transcript.map((msg) => (
+              <Bubble key={msg.id} role={msg.role} text={msg.text} isInterim={false} />
+            ))}
+
+            {/* Live interim user bubble */}
+            {listening && interimText && (
+              <Bubble role="user" text={interimText} isInterim={true} />
+            )}
+
+            {/* AI typing indicator */}
+            {aiSpeaking && (
+              <div className="flex gap-3 justify-start">
+                <div className="w-7 h-7 rounded-full bg-onair/20 border border-onair/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-onair text-xs font-bold">AI</span>
+                </div>
+                <div className="bg-panel2 border border-hairline rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1.5">
+                  {[0, 1, 2].map(i => (
+                    <span key={i} className="w-1.5 h-1.5 rounded-full bg-onair/60 animate-bounce"
+                      style={{ animationDelay: `${i * 0.15}s` }} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div ref={transcriptEndRef} />
+          </div>
+
+          {/* Score preview at bottom */}
+          {lastResult && (
+            <div className="shrink-0 px-5 pb-5 pt-2 border-t border-hairline">
+              <ScorePreview result={lastResult} />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

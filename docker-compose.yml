@@ -1,0 +1,75 @@
+# ─── HireSense AI — Docker Compose (Local Development) ───────────────────────
+# Starts backend, frontend (Vite dev server), and MongoDB together.
+# Hot-reload is enabled for both services via bind mounts.
+#
+# Usage:
+#   docker compose up --build        # first time
+#   docker compose up                # subsequent runs
+#   docker compose down -v           # stop + remove volumes
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── MongoDB ─────────────────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7
+    container_name: hiresense_mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend (Node.js + Express + WebSocket) ──────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hiresense_backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - NODE_ENV=development
+      - MONGO_URI=mongodb://mongo:27017/hiresense-ai
+    volumes:
+      # Hot-reload: mount source (override CMD for dev)
+      - ./backend/src:/app/src
+      - ./backend/uploads:/app/uploads
+    command: ["node", "src/server.js"]
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── Frontend (Vite dev server with HMR) ──────────────────────────────────────
+  frontend:
+    image: node:20-alpine
+    container_name: hiresense_frontend
+    working_dir: /app
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:5000
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:
+    name: hiresense_mongo_data
