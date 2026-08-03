@@ -27,8 +27,7 @@ npm run dev
 npm run check:apis
 ```
 
-> **With Docker:** `docker compose up --build` — starts backend + frontend + MongoDB together.
-> See [DEPLOYMENT.md](DEPLOYMENT.md) for Docker, Render, Railway, and Vercel guides.
+> See [DEPLOYMENT.md](DEPLOYMENT.md) for Render, Railway, and Vercel guides.
 
 ---
 
@@ -50,14 +49,11 @@ GitHub Analyzer · Company Question Bank · Interview Packs.
 HireSense AI/
 ├── .gitignore
 ├── .github/workflows/ci.yml   ← GitHub Actions CI
-├── docker-compose.yml          ← Local dev (all services + MongoDB)
-├── docker-compose.prod.yml     ← Production Docker Compose
 ├── package.json                ← npm workspaces root
 ├── render.yaml                 ← One-click Render.com deploy
 ├── DEPLOYMENT.md               ← Full deployment guide
 │
 ├── backend/                    ← Node.js + Express API + WebSocket
-│   ├── Dockerfile
 │   ├── .env.example            ← Required environment variables
 │   ├── scripts/
 │   │   └── checkApis.js        ← Diagnostic: verify all API keys
@@ -71,8 +67,6 @@ HireSense AI/
 │       └── server.js           ← Entry point
 │
 └── frontend/                   ← React 18 + Vite + Tailwind CSS
-    ├── Dockerfile              ← Multi-stage: Vite → nginx
-    ├── nginx.conf              ← SPA routing + API proxy
     ├── .env.example            ← VITE_API_URL
     └── src/
         ├── components/         ← Shell, ProtectedRoute, PageHeader
@@ -140,7 +134,6 @@ npm run test
 ## Deployment
 
 See **[DEPLOYMENT.md](DEPLOYMENT.md)** for:
-- Docker (local dev + production)
 - Render.com (one-click via `render.yaml`)
 - Railway
 - Vercel (frontend) + Render (backend) split

@@ -10,30 +10,23 @@ A step-by-step reference for deploying HireSense AI to different environments.
 HireSense AI/
 ├── .gitignore                 # Root gitignore
 ├── .github/workflows/ci.yml  # GitHub Actions CI pipeline
-├── docker-compose.yml         # Local development (all services)
-├── docker-compose.prod.yml    # Production Docker Compose
 ├── package.json               # npm workspaces root
 ├── render.yaml                # Render.com one-click deployment
 │
 ├── backend/
-│   ├── Dockerfile             # Node.js 20 Alpine image
-│   ├── .dockerignore
 │   ├── .env.example           # Required environment variables
 │   ├── scripts/
 │   │   └── checkApis.js       # Diagnostic tool — verify all API keys
 │   └── src/                   # Application source
 │
 └── frontend/
-    ├── Dockerfile             # Multi-stage: Vite build → nginx serve
-    ├── .dockerignore
     ├── .env.example           # VITE_API_URL for production builds
-    ├── nginx.conf             # SPA routing + API proxy config
     └── src/                   # React application source
 ```
 
 ---
 
-## Option 1 — Local Development (no Docker)
+## Option 1 — Local Development
 
 > Fastest way to start coding.
 
@@ -60,58 +53,7 @@ npm run check:apis
 
 ---
 
-## Option 2 — Docker (Local / VPS)
-
-> Fully containerized — MongoDB included.
-
-### Development (hot-reload)
-
-```bash
-# Start everything
-docker compose up --build
-
-# Stop everything
-docker compose down
-
-# Stop and remove volumes (wipes MongoDB data)
-docker compose down -v
-```
-
-Services:
-| Service | URL |
-|---|---|
-| Frontend (Vite) | http://localhost:5173 |
-| Backend API | http://localhost:5000 |
-| MongoDB | mongodb://localhost:27017 |
-
-### Production
-
-```bash
-# 1. Copy and configure secrets
-cp backend/.env.example backend/.env
-# Edit backend/.env
-
-# 2. Set required env vars for production compose
-export CLIENT_ORIGIN=https://yourdomain.com
-export JWT_SECRET=$(openssl rand -hex 32)
-export GEMINI_API_KEY=your_key
-# ... set all other keys
-
-# 3. Start production stack
-docker compose -f docker-compose.prod.yml up --build -d
-
-# 4. View logs
-docker compose -f docker-compose.prod.yml logs -f
-
-# 5. Tear down
-docker compose -f docker-compose.prod.yml down
-```
-
-Frontend is served on **port 80** by nginx. Point your domain's A record to the server IP.
-
----
-
-## Option 3 — Render.com (Recommended for free-tier hosting)
+## Option 2 — Render.com (Recommended for free-tier hosting)
 
 > One-click deployment via `render.yaml`.
 
@@ -149,7 +91,7 @@ Frontend is served on **port 80** by nginx. Point your domain's A record to the 
 
 ---
 
-## Option 4 — Vercel (Frontend) + Render (Backend)
+## Option 3 — Vercel (Frontend) + Render (Backend)
 
 > Best for production: Vercel CDN for the React app, Render for the API.
 
@@ -189,7 +131,7 @@ Create `frontend/vercel.json`:
 
 ---
 
-## Option 5 — Railway
+## Option 4 — Railway
 
 > Simple: each folder is a separate Railway service.
 
@@ -266,4 +208,5 @@ GET /api/health
 → { "status": "ok", "time": "2026-01-01T00:00:00.000Z" }
 ```
 
-Used by Docker Compose health checks, Render, and load balancers.
+Used by Render, Railway, and load balancers.
+
