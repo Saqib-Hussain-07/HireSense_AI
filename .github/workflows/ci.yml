@@ -55,7 +55,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --include=optional
 
       - name: Build
         run: npm run build
