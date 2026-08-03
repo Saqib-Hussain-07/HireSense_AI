@@ -1,4 +1,5 @@
-const BASE = '/api';
+const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+const BASE = API_URL ? `${API_URL}/api` : '/api';
 
 function getToken() {
   return localStorage.getItem('hiresense_token');
@@ -84,9 +85,13 @@ export const api = {
 
 export function wsUrl(sessionId) {
   const token = getToken();
-  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  // In dev, Vite proxies /ws to the backend (see vite.config.js).
-  return `${protocol}://${window.location.host}/ws/interview/${sessionId}?token=${token}`;
+  if (API_URL) {
+    const urlObj = new URL(API_URL);
+    const wsProtocol = urlObj.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${wsProtocol}//${urlObj.host}/ws/interview/${sessionId}?token=${token}`;
+  }
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${window.location.host}/ws/interview/${sessionId}?token=${token}`;
 }
 
 export { getToken };
