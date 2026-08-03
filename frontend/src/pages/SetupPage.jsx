@@ -192,9 +192,30 @@ function DropZone({ onFile, accept, busy, label, sublabel, accepted }) {
 export default function SetupPage() {
   const navigate = useNavigate();
 
-  // Step tracking: 1=resume, 2=jd, 3=analysing, 4=report, 5=interview config
-  const [step, setStep] = useState(1);
+  // Step tracking: 0=choice, 1=resume, 2=jd, 3=analysing, 4=report, 5=interview config
+  const [step, setStep] = useState(0);
   const [error, setError] = useState('');
+  const [fetchingLatest, setFetchingLatest] = useState(false);
+
+  async function handleContinue() {
+    setFetchingLatest(true);
+    setError('');
+    try {
+      const report = await api.getLatestMatch();
+      setMatchReport(report);
+      const resumeData = await api.getResume(report.resumeId);
+      setResume(resumeData);
+      setStep(5);
+    } catch (err) {
+      setError('No previous CV/JD found. Redirecting to Fresh Start setup...');
+      setTimeout(() => {
+        setStep(1);
+        setError('');
+      }, 2000);
+    } finally {
+      setFetchingLatest(false);
+    }
+  }
 
   // Step 1 — Resume
   const [resume, setResume] = useState(null);
@@ -303,13 +324,24 @@ export default function SetupPage() {
       const coachingMode = commonSelections.coaching.startsWith('On') ? 'coaching' : 'neutral_assessment';
       const matchReportId = matchReport && !matchReport._synth ? matchReport._id : undefined;
 
+      const isPanel = subSelections.persona === 'Panel — 2 voices';
+      const personaVal =
+        subSelections.persona === 'Staff Engineer' ? 'faang_engineer'
+        : subSelections.persona === 'Hiring Manager' ? 'strict_recruiter'
+        : subSelections.persona === 'Friendly HR' ? 'friendly_mentor'
+        : subSelections.persona === 'Junior Peer Interviewer' ? 'friendly_mentor'
+        : subSelections.persona === 'Senior IC' ? 'faang_engineer'
+        : subSelections.persona === 'Bar-raiser' ? 'strict_recruiter'
+        : subSelections.persona === 'Hiring Committee' ? 'strict_recruiter'
+        : subSelections.persona === 'HR Partner' ? 'friendly_mentor'
+        : subSelections.persona === 'Culture-fit interviewer' ? 'friendly_mentor'
+        : subSelections.persona === 'VP / Director' ? 'startup_founder'
+        : 'friendly_mentor';
+
       const session = await api.generateInterview({
         type: mode.backendType,
         difficulty: mode.backendDifficulty,
-        persona: subSelections.persona === 'Staff Engineer' ? 'faang_engineer'
-          : subSelections.persona === 'Hiring Manager' ? 'strict_recruiter'
-          : subSelections.persona === 'Friendly HR' ? 'friendly_mentor'
-          : 'friendly_mentor',
+        ...(isPanel ? { panelPersonas: ['strict_recruiter', 'friendly_mentor'] } : { persona: personaVal }),
         mode: coachingMode,
         matchReportId,
       });
@@ -337,40 +369,82 @@ export default function SetupPage() {
       <div className="max-w-2xl mx-auto">
 
         {/* Header */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 bg-onair/10 border border-onair/20 rounded-full px-3.5 py-1.5 mb-5">
-            <span className="w-1.5 h-1.5 rounded-full bg-onair" />
-            <span className="text-xs font-mono text-onair uppercase tracking-wider">HireSense AI — Interview Setup</span>
+        {step >= 1 && (
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center gap-2 bg-onair/10 border border-onair/20 rounded-full px-3.5 py-1.5 mb-5">
+              <span className="w-1.5 h-1.5 rounded-full bg-onair" />
+              <span className="text-xs font-mono text-onair uppercase tracking-wider">HireSense AI — Interview Setup</span>
+            </div>
+            <h1 className="font-serif text-3xl mb-2">Set up your voice interview</h1>
+            <p className="text-sm text-muted">Upload your CV, add the job, get your analysis, then start your tailored interview.</p>
           </div>
-          <h1 className="font-serif text-3xl mb-2">Set up your voice interview</h1>
-          <p className="text-sm text-muted">Upload your CV, add the job, get your analysis, then start your tailored interview.</p>
-        </div>
+        )}
 
         {/* Progress indicator */}
-        <div className="flex items-center gap-0 mb-10">
-          {['CV Upload', 'Job Description', 'Analysis', 'Report', 'Interview'].map((label, i) => {
-            const n = i + 1;
-            const done = step > n;
-            const active = step === n;
-            return (
-              <React.Fragment key={label}>
-                <div className={`flex flex-col items-center ${n > 1 ? 'flex-1' : ''}`}>
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-mono transition-all duration-300 ${
-                    done ? 'bg-signal text-ink' : active ? 'bg-onair text-ink' : 'bg-panel2 text-faint'
-                  }`}>
-                    {done ? '✓' : n}
+        {step >= 1 && (
+          <div className="flex items-center gap-0 mb-10">
+            {['CV Upload', 'Job Description', 'Analysis', 'Report', 'Interview'].map((label, i) => {
+              const n = i + 1;
+              const done = step > n;
+              const active = step === n;
+              return (
+                <React.Fragment key={label}>
+                  <div className={`flex flex-col items-center ${n > 1 ? 'flex-1' : ''}`}>
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-mono transition-all duration-300 ${
+                      done ? 'bg-signal text-ink' : active ? 'bg-onair text-ink' : 'bg-panel2 text-faint'
+                    }`}>
+                      {done ? '✓' : n}
+                    </div>
+                    <p className={`text-xs mt-1 hidden sm:block ${active ? 'text-text' : 'text-faint'}`}>{label}</p>
                   </div>
-                  <p className={`text-xs mt-1 hidden sm:block ${active ? 'text-text' : 'text-faint'}`}>{label}</p>
-                </div>
-                {i < 4 && <div className={`flex-1 h-px mx-1 ${step > n + 1 ? 'bg-signal/50' : 'bg-hairline'}`} />}
-              </React.Fragment>
-            );
-          })}
-        </div>
+                  {i < 4 && <div className={`flex-1 h-px mx-1 ${step > n + 1 ? 'bg-signal/50' : 'bg-hairline'}`} />}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        )}
 
         {error && (
           <div className="mb-5 bg-alert/10 border border-alert/30 rounded-lg px-4 py-3 text-sm text-alert">
             {error}
+          </div>
+        )}
+
+        {/* ── STEP 0: Selection Choice ── */}
+        {step === 0 && (
+          <div className="bg-[#0a0a0a]/60 border border-white/5 rounded-2xl p-8 space-y-6 text-center relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.015)_0%,transparent_70%)] pointer-events-none" />
+            
+            <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3.5 py-1.5 mb-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              <span className="text-xs font-mono text-white/70 uppercase tracking-wider">New Interview Setup</span>
+            </div>
+            
+            <h2 className="font-display font-bold text-2xl sm:text-3xl text-white">Choose your setup method</h2>
+            <p className="text-zinc-400 text-sm max-w-md mx-auto font-body">
+              Upload a new resume and job details, or quickly start an interview using your existing profile.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 relative z-10">
+              <button
+                onClick={() => setStep(1)}
+                className="flex flex-col items-center justify-center p-6 bg-[#0a0a0a]/80 border border-white/5 hover:border-white/20 rounded-xl hover:bg-white/[0.01] transition-all hover:scale-[1.02] active:scale-[0.98] group"
+              >
+                <span className="text-3xl mb-3 filter grayscale group-hover:grayscale-0 transition-all duration-300">🌱</span>
+                <span className="font-semibold text-white">Fresh Start</span>
+                <span className="text-xs text-zinc-500 mt-1 max-w-[200px] leading-relaxed">Upload a new CV and Job Description to begin</span>
+              </button>
+              <button
+                onClick={handleContinue}
+                disabled={fetchingLatest}
+                className="flex flex-col items-center justify-center p-6 bg-[#0a0a0a]/80 border border-white/5 hover:border-white/20 rounded-xl hover:bg-white/[0.01] transition-all hover:scale-[1.02] active:scale-[0.98] group disabled:opacity-50"
+              >
+                <span className="text-3xl mb-3 filter grayscale group-hover:grayscale-0 transition-all duration-300">⚡</span>
+                <span className="font-semibold text-white">
+                  {fetchingLatest ? 'Retrieving CV/JD...' : 'Continue'}
+                </span>
+                <span className="text-xs text-zinc-500 mt-1 max-w-[200px] leading-relaxed">Start directly with your previously uploaded CV & JD</span>
+              </button>
+            </div>
           </div>
         )}
 

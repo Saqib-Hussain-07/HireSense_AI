@@ -5,22 +5,22 @@
 /* ─── Dark mode (default) ─── */
 :root,
 html.dark {
-  --color-ink:     #12141C;
-  --color-panel:   #1B1F2B;
-  --color-panel2:  #232838;
-  --color-hairline:#2E3448;
-  --color-text:    #EDEEF2;
-  --color-muted:   #9198AC;
-  --color-faint:   #5D6478;
+  --color-ink:     #000000;
+  --color-panel:   #0d0d0d;
+  --color-panel2:  #161616;
+  --color-hairline:rgba(255,255,255,0.08);
+  --color-text:    #ffffff;
+  --color-muted:   #a1a1aa;
+  --color-faint:   #3f3f46;
 
-  /* Sidebar is WHITE (light) in dark mode */
-  --color-sidebar:        #FFFFFF;
-  --color-sidebar-border: #E2E5EE;
-  --color-sidebar-text:   #0F1117;
-  --color-sidebar-muted:  #5D6478;
-  --color-sidebar-faint:  #9198AC;
-  --color-sidebar-hover:  #F0F1F5;
-  --color-sidebar-active: #EEF0F6;
+  /* Sidebar matches the dark monochrome theme */
+  --color-sidebar:        #050505;
+  --color-sidebar-border: rgba(255,255,255,0.08);
+  --color-sidebar-text:   #ffffff;
+  --color-sidebar-muted:  #a1a1aa;
+  --color-sidebar-faint:  #3f3f46;
+  --color-sidebar-hover:  rgba(255,255,255,0.04);
+  --color-sidebar-active: rgba(255,255,255,0.08);
 }
 
 /* ─── Light mode ─── */
@@ -50,6 +50,17 @@ html, body, #root {
 
 body {
   @apply bg-ink text-text font-body;
+}
+
+/* Force browser autofill inputs to match our dark theme and not turn white */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #ffffff !important;
+  -webkit-box-shadow: 0 0 0 1000px #000000 inset !important;
+  box-shadow: 0 0 0 1000px #000000 inset !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 ::selection {

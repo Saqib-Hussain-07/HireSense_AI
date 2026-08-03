@@ -53,12 +53,12 @@ describe('scoreAnswer', () => {
     callAI.mockResolvedValue({
       data: {
         scores: {
-          relevance: 18,
-          structure: 12,
-          technicalAccuracy: 16,
+          relevance: 9,
+          structure: 8,
+          technicalAccuracy: 8,
           businessThinking: 8,
           star: 8,
-          creativity: 4,
+          creativity: 8,
         },
         idealAnswer: 'A tighter version of the answer.',
         gapNotes: 'Missed discussing tradeoffs.',
@@ -74,14 +74,15 @@ describe('scoreAnswer', () => {
       targetRole: 'Backend Engineer',
       mode: 'coaching',
       durationSeconds: 15,
+      sessionType: 'technical',
     });
 
     expect(callAI).toHaveBeenCalledTimes(1);
     expect(result.rubricScores.deliveryScore).toBeGreaterThanOrEqual(0);
-    expect(result.rubricScores.relevance).toBe(18);
-    // 18+12+16+8+deliveryScore+8+4, normalized against a 90-point max, rounded
-    const expectedRaw = 18 + 12 + 16 + 8 + result.rubricScores.deliveryScore + 8 + 4;
-    expect(result.finalScore).toBe(Math.round((expectedRaw / 90) * 100));
+    expect(result.rubricScores.relevance).toBe(9);
+    // 18+12+16+8+deliveryScore+4, normalized against an 80-point max, rounded (STAR is excluded in technical)
+    const expectedRaw = 9 * 2 + 8 * 1.5 + 8 * 2 + 8 * 1 + result.rubricScores.deliveryScore + 8 * 0.5;
+    expect(result.finalScore).toBe(Math.max(1, Math.min(10, Math.round((expectedRaw / 80) * 10))));
     expect(result.idealAnswer).toBe('A tighter version of the answer.');
     expect(result.evidenceQuotes).toHaveLength(1);
   });

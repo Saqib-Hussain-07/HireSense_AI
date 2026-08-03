@@ -102,14 +102,15 @@ function Bubble({ role, text, isInterim }) {
 /* ── Score preview ──────────────────────────────────────────────────────── */
 function ScorePreview({ result }) {
   const pct = result.finalScore || 0;
-  const color = pct >= 80 ? '#5FB8A8' : pct >= 55 ? '#E8A94B' : '#E1685A';
-  const label = pct >= 80 ? 'Good' : pct >= 55 ? 'Average' : 'Needs work';
+  const color = pct >= 8 ? '#5FB8A8' : pct >= 5.5 ? '#E8A94B' : '#E1685A';
+  const label = pct >= 8 ? 'Good' : pct >= 5.5 ? 'Average' : 'Needs work';
   return (
     <div className="w-full bg-panel border border-hairline rounded-2xl p-4 space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-text">Answer scored</p>
         <div className="flex items-center gap-2">
           <span className="text-2xl font-display font-bold" style={{ color }}>{pct}</span>
+          <span className="text-xs text-faint font-mono mt-1">/ 10</span>
           <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ background: color + '22', color }}>{label}</span>
         </div>
       </div>
@@ -148,10 +149,20 @@ export default function VoiceInterviewSessionPage() {
   const [transcript, setTranscript] = useState([]);
   // Live interim text from mic
   const [interimText, setInterimText] = useState('');
+  
+  // Text fallback and onboarding instructions states
+  const [typedAnswer, setTypedAnswer] = useState('');
+  const [showInstructions, setShowInstructions] = useState(true);
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
 
   const answerStartRef   = useRef(null);
   const transcriptEndRef  = useRef(null);
   const latestAnswerRef   = useRef(''); // accumulates the full spoken answer text
+
+  // Set initial start time when component mounts
+  useEffect(() => {
+    answerStartRef.current = Date.now();
+  }, []);
 
   /* ── Helpers to append/update transcript ── */
   function pushAI(text) {
@@ -180,15 +191,18 @@ export default function VoiceInterviewSessionPage() {
       setNudge(false);
       pushAI(msg.text);
       speak(msg.text);
+      answerStartRef.current = Date.now();
     },
     scored: (msg) => setLastResult(msg.result),
     followup: (msg) => {
       pushAI(msg.text);
       speak(msg.text);
+      answerStartRef.current = Date.now();
     },
     pushback: (msg) => {
       pushAI(`⚡ ${msg.text}`);
       speak(msg.text);
+      answerStartRef.current = Date.now();
     },
     silence_nudge: () => {
       const nudgeText = "Take your time — I'm still here whenever you're ready.";
@@ -204,10 +218,14 @@ export default function VoiceInterviewSessionPage() {
   /* ── Load session meta ── */
   useEffect(() => {
     api.getInterview(id).then((session) => {
+      if (session.status === 'completed') {
+        navigate(`/interview/${id}/report`, { replace: true });
+        return;
+      }
       setTotalQuestions(session.questions.length);
       setQuestionIndex(session.currentQuestionIndex);
     });
-  }, [id]);
+  }, [id, navigate]);
 
   /* ── Mic control ── */
   async function handleStartAnswer() {
@@ -259,6 +277,24 @@ export default function VoiceInterviewSessionPage() {
     send({ type: 'transcript_final', questionIndex, text: finalText, durationSeconds });
   }
 
+  function handleTextSubmit() {
+    if (!typedAnswer.trim()) return;
+    const textToSend = typedAnswer.trim();
+    setTypedAnswer('');
+
+    pushUserFinal(textToSend);
+
+    if (listening) {
+      stopListening();
+    }
+
+    const durationSeconds = answerStartRef.current
+      ? (Date.now() - answerStartRef.current) / 1000
+      : 15;
+
+    send({ type: 'transcript_final', questionIndex, text: textToSend, durationSeconds });
+  }
+
   function handleRedo() {
     setLastResult(null);
     setInterimText('');
@@ -272,6 +308,10 @@ export default function VoiceInterviewSessionPage() {
   async function handleFinish() {
     await api.finishInterview(id);
     navigate(`/interview/${id}/report`);
+  }
+
+  function handleEndInterviewPrompt() {
+    setShowEndConfirm(true);
   }
 
   /* ── Complete screen ── */
@@ -307,6 +347,12 @@ export default function VoiceInterviewSessionPage() {
         <div className="flex items-center gap-3">
           <span className={`w-2 h-2 rounded-full ${connected ? 'bg-signal' : 'bg-alert'}`} />
           <span className="text-xs font-mono text-faint">{connected ? 'live' : 'reconnecting…'}</span>
+          <button
+            onClick={handleEndInterviewPrompt}
+            className="ml-4 text-[10px] uppercase font-mono tracking-wider text-alert hover:text-white border border-alert/30 hover:bg-alert/15 px-2.5 py-1 rounded transition-colors"
+          >
+            End Interview
+          </button>
         </div>
 
         {/* Progress */}
@@ -482,6 +528,30 @@ export default function VoiceInterviewSessionPage() {
             <div ref={transcriptEndRef} />
           </div>
 
+          {/* Text input fallback */}
+          <div className="shrink-0 px-5 py-3 border-t border-hairline bg-[#0a0a0a]/50 flex gap-2">
+            <input
+              type="text"
+              placeholder={listening ? "Speak your answer or type here..." : "Type your answer..."}
+              value={typedAnswer}
+              onChange={(e) => setTypedAnswer(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && typedAnswer.trim()) {
+                  handleTextSubmit();
+                }
+              }}
+              disabled={aiSpeaking}
+              className="flex-1 bg-[#141414] border border-hairline rounded-xl px-4 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-onair text-white disabled:opacity-40"
+            />
+            <button
+              onClick={handleTextSubmit}
+              disabled={aiSpeaking || !typedAnswer.trim()}
+              className="bg-onair text-ink font-semibold rounded-xl px-4 py-2 text-xs hover:bg-onair2 transition-colors disabled:opacity-40"
+            >
+              Submit
+            </button>
+          </div>
+
           {/* Score preview at bottom */}
           {lastResult && (
             <div className="shrink-0 px-5 pb-5 pt-2 border-t border-hairline">
@@ -490,6 +560,77 @@ export default function VoiceInterviewSessionPage() {
           )}
         </div>
       </div>
+
+      {/* Onboarding / Instruction Modal Overlay */}
+      {showInstructions && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md px-4">
+          <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.02)_0%,transparent_60%)] pointer-events-none" />
+            <div className="text-center space-y-2 relative z-10">
+              <div className="w-12 h-12 rounded-full bg-onair/10 border border-onair/30 flex items-center justify-center mx-auto text-xl">🎙️</div>
+              <h3 className="text-lg font-bold text-white tracking-tight">Interview Instructions</h3>
+              <p className="text-xs text-zinc-400">Welcome to your adaptive AI mock interview session. Here is how it works:</p>
+            </div>
+            
+            <div className="space-y-3.5 relative z-10 text-xs text-zinc-300">
+              <div className="flex gap-3">
+                <span className="text-onair font-bold">1.</span>
+                <p><span className="text-white font-semibold">Speak Naturally:</span> Click <span className="text-white font-medium">"Start speaking"</span>, say your answer aloud, then click <span className="text-white font-medium">"Done answering"</span> when complete.</p>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-onair font-bold">2.</span>
+                <p><span className="text-white font-semibold">Adaptive Follow-ups:</span> The AI acts like a real interviewer. It will probe your claims, ask for details, or challenge weak points.</p>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-onair font-bold">3.</span>
+                <p><span className="text-white font-semibold">Text Mode Fallback:</span> If your microphone isn't working or browser speech recognition is unsupported, simply type your responses in the text input box at the bottom.</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowInstructions(false)}
+              className="relative z-10 w-full bg-white text-black font-semibold rounded-xl py-2.5 text-xs hover:bg-zinc-200 transition-colors"
+            >
+              Start Interview
+            </button>
+          </div>
+        </div>
+      )}
+      {/* End Interview Confirmation Modal */}
+      {showEndConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md px-4">
+          <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl max-w-sm w-full p-6 space-y-5 shadow-2xl relative overflow-hidden text-left">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.02)_0%,transparent_60%)] pointer-events-none" />
+            <div className="text-center space-y-2 relative z-10">
+              <div className="w-12 h-12 rounded-full bg-alert/10 border border-alert/30 flex items-center justify-center mx-auto text-xl text-alert">⚠️</div>
+              <h3 className="text-lg font-bold text-white tracking-tight">End Interview Early?</h3>
+              <p className="text-xs text-zinc-400">
+                Are you sure you want to end the interview early? You will not be able to continue and it will generate the final report for the answered questions.
+              </p>
+            </div>
+
+            <div className="flex gap-3 relative z-10">
+              <button
+                type="button"
+                onClick={() => setShowEndConfirm(false)}
+                className="flex-1 bg-panel2 border border-hairline text-white font-semibold rounded-xl py-2.5 text-xs hover:bg-white/5 transition-colors"
+              >
+                No, continue
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  setShowEndConfirm(false);
+                  await handleFinish();
+                }}
+                className="flex-1 bg-alert text-ink font-semibold rounded-xl py-2.5 text-xs hover:bg-alert/80 transition-colors animate-pulse"
+              >
+                Yes, end early
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

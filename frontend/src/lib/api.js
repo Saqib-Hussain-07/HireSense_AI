@@ -48,9 +48,11 @@ export const api = {
     form.append('jd', file);
     return request('/jd/upload-pdf', { method: 'POST', body: form, isForm: true });
   },
+  getJDs: () => request('/jd'),
 
   createMatch: (body) => request('/match', { method: 'POST', body }),
   getMatch: (id) => request(`/match/${id}`),
+  getLatestMatch: () => request('/match/latest'),
 
   generateInterview: (body) => request('/interview/generate', { method: 'POST', body }),
   generateInterviewFromPack: (body) => request('/interview/generate-from-pack', { method: 'POST', body }),

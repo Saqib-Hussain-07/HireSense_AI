@@ -36,6 +36,16 @@ router.post('/', async (req, res) => {
   }
 });
 
+router.get('/latest', async (req, res) => {
+  try {
+    const report = await MatchReport.findOne({ userId: req.userId }).sort({ createdAt: -1 });
+    if (!report) return res.status(404).json({ error: 'No match report found' });
+    res.json(report);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch latest match report', detail: err.message });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   const report = await MatchReport.findOne({ _id: req.params.id, userId: req.userId });
   if (!report) return res.status(404).json({ error: 'Match report not found' });

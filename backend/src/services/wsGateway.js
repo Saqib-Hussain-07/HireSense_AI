@@ -34,6 +34,7 @@ const AUTO_ADVANCE_MS = 90 * 1000;
 
 function attachWsGateway(httpServer) {
   const wss = new WebSocketServer({ noServer: true });
+  const activeScoring = new Set();
 
   httpServer.on('upgrade', (req, socket, head) => {
     const match = req.url.match(/^\/ws\/interview\/([a-fA-F0-9]{24})(\?.*)?$/);
@@ -129,7 +130,16 @@ function attachWsGateway(httpServer) {
         const q = session.questions[questionIndex];
         if (!q) return ws.send(JSON.stringify({ type: 'error', message: 'Invalid questionIndex' }));
 
+        const scoringKey = `${sessionId}_${questionIndex}`;
+        if (activeScoring.has(scoringKey)) {
+          console.warn(`[wsGateway] Scoring already in progress for key: ${scoringKey}`);
+          return;
+        }
+        activeScoring.add(scoringKey);
+
         q.answerTranscript = text || q.answerTranscript;
+        q.followUps = [];
+        q.pushback = null;
         await session.save(); // auto-save after every turn (blueprint reliability rule)
 
         try {
@@ -147,12 +157,22 @@ function attachWsGateway(httpServer) {
           q.gapNotes = result.gapNotes;
           q.evidenceQuotes = result.evidenceQuotes;
           if (result.starCheck) q.starCheck = result.starCheck;
+          q.sentiment = result.sentiment;
+          q.engagement = result.engagement;
+          q.confidenceScore = result.confidenceScore;
+          q.jargonHighlights = result.jargonHighlights;
           await session.save();
 
           ws.send(JSON.stringify({ type: 'scored', questionIndex, result }));
 
           const shortHistory = session.questions.slice(0, questionIndex).map((qq) => ({ q: qq.questionText, a: qq.answerTranscript?.slice(0, 200) }));
-          const { followUpText, tier } = await getNextFollowUp({ lastAnswerTranscript: q.answerTranscript, shortHistory, persona: q.persona || session.persona });
+          const { followUpText, tier } = await getNextFollowUp({
+            lastAnswerTranscript: q.answerTranscript,
+            shortHistory,
+            persona: q.persona || session.persona,
+            sentiment: q.sentiment,
+            engagement: q.engagement,
+          });
           const { pushback } = await maybePushback({ claim: q.answerTranscript, persona: q.persona || session.persona });
 
           if (pushback) {
@@ -167,6 +187,8 @@ function attachWsGateway(httpServer) {
         } catch (aiErr) {
           console.error('[wsGateway] scoring/follow-up failed:', aiErr.message);
           ws.send(JSON.stringify({ type: 'error', message: 'AI evaluation temporarily unavailable, please retry your answer.' }));
+        } finally {
+          activeScoring.delete(scoringKey);
         }
 
         armSilenceTimers(questionIndex);

@@ -7,11 +7,15 @@ router.use(requireAuth);
 
 // GET /api/company-questions?company=Google&tag=system_design
 // Tagged by company + recency (blueprint 3B.18); sorted most-recent first.
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 router.get('/', async (req, res) => {
   try {
     const { company, tag } = req.query;
     const filter = {};
-    if (company) filter.company = new RegExp(`^${company}$`, 'i');
+    if (company) filter.company = new RegExp(`^${escapeRegExp(company)}$`, 'i');
     if (tag) filter.tags = tag;
     const questions = await CompanyQuestion.find(filter).sort({ recency: -1 }).limit(100);
     res.json(questions);

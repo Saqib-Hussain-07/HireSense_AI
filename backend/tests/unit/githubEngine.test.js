@@ -28,14 +28,22 @@ describe('analyzeGithubRepo', () => {
       .mockResolvedValueOnce(jsonResponse({ JavaScript: 1000, HTML: 200 }))
       .mockResolvedValueOnce(jsonResponse({ content: Buffer.from('# Hello World\nA demo project.').toString('base64'), encoding: 'base64' }));
 
-    callAI.mockResolvedValue({ data: { questions: ['Why did you structure the routes this way?'] } });
+    callAI.mockResolvedValue({
+      data: {
+        summary: 'Technical summary.',
+        categories: { Architecture: ['Why did you structure the routes this way?'] },
+      },
+    });
 
     const result = await analyzeGithubRepo('https://github.com/octocat/hello-world');
 
     expect(result.repo.repoName).toBe('octocat/hello-world');
-    expect(result.repo.languages).toEqual(['JavaScript', 'HTML']);
+    expect(result.repo.languages).toEqual([
+      { name: 'JavaScript', percentage: 83 },
+      { name: 'HTML', percentage: 17 },
+    ]);
     expect(result.repo.readmeExcerpt).toContain('Hello World');
-    expect(result.questions).toEqual(['Why did you structure the routes this way?']);
+    expect(result.categories.Architecture).toEqual(['Why did you structure the routes this way?']);
   });
 
   test('throws a clear error for a private/nonexistent repo (404)', async () => {
@@ -54,10 +62,15 @@ describe('analyzeGithubRepo', () => {
       .mockResolvedValueOnce(jsonResponse({ Python: 500 }))
       .mockResolvedValueOnce({ ok: false, status: 404 }); // readme missing
 
-    callAI.mockResolvedValue({ data: { questions: ['Tell me about your architecture.'] } });
+    callAI.mockResolvedValue({
+      data: {
+        summary: 'Python repo.',
+        categories: { Architecture: ['Tell me about your architecture.'] },
+      },
+    });
 
     const result = await analyzeGithubRepo('https://github.com/octocat/hello-world');
     expect(result.repo.readmeExcerpt).toBe('');
-    expect(result.questions).toHaveLength(1);
+    expect(result.categories.Architecture).toHaveLength(1);
   });
 });

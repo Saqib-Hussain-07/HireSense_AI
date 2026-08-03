@@ -33,6 +33,11 @@ const StarCheckSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const JargonHighlightSchema = new mongoose.Schema(
+  { wordOrPhrase: String, replacement: String, reason: String },
+  { _id: false }
+);
+
 const QuestionSchema = new mongoose.Schema(
   {
     questionText: String,
@@ -55,6 +60,10 @@ const QuestionSchema = new mongoose.Schema(
     timedOut: { type: Boolean, default: false },
     // turn-level state used for silence timeout handling (45s nudge / 90s auto-advance)
     silenceNudgedAt: { type: Date, default: null },
+    sentiment: { type: String, default: 'neutral' },
+    engagement: { type: Number, default: 0 },
+    confidenceScore: { type: Number, default: 0 },
+    jargonHighlights: { type: [JargonHighlightSchema], default: [] },
   },
   { _id: false }
 );

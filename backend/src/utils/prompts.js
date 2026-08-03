@@ -3,24 +3,45 @@
  * Keep each prompt narrow & single-purpose (blueprint rule #1).
  */
 
-function resumeParsePrompt(rawText) {
+function resumeAnalyzePrompt(rawText, targetRole) {
   return {
-    system: 'You extract structured data from resumes. Return JSON only, no preamble.',
-    prompt: `Resume raw text:\n"""${rawText}"""\n\nReturn JSON only:\n{"skills":[],"education":[{"degree":"","school":"","year":""}],"experience":[{"role":"","company":"","years":"","highlights":[]}],"projects":[{"name":"","description":""}],"certifications":[]}`,
-  };
-}
-
-function atsScorePrompt(parsedResume, targetRole) {
-  return {
-    system: 'You are an ATS (applicant tracking system) scoring engine. Return JSON only.',
-    prompt: `Parsed resume: ${JSON.stringify(parsedResume)}\nTarget role: ${targetRole || 'general'}\n\nScore this resume 0-100 for ATS-friendliness and keyword coverage. Return JSON only:\n{"atsScore":0,"missingKeywords":[],"weakBullets":[{"original":"","suggested":""}]}`,
+    system: 'You are an advanced ATS (applicant tracking system) and resume parser. Return JSON only, no conversational text.',
+    prompt: `Resume raw text:\n"""${rawText}"""\n\nTarget role: ${targetRole || 'general'}\n\nPerform a comprehensive ATS analysis and parsing. Return JSON matching this exact schema:
+{
+  "parsed": {
+    "skills": ["skill1", "skill2"],
+    "education": [{"degree": "degree details", "school": "school name", "year": "graduation year"}],
+    "experience": [{"role": "job title", "company": "company name", "years": "years employed", "highlights": ["achievement 1"]}],
+    "projects": [{"name": "project name", "description": "project description"}],
+    "certifications": ["certification name"]
+  },
+  "atsScore": 85, // Integer between 0 and 100
+  "missingKeywords": ["keyword1", "keyword2"],
+  "weakBullets": [
+    { "original": "original bullet point", "suggested": "optimized bullet point with action verbs and quantifiable metrics" }
+  ]
+}`,
   };
 }
 
 function jdExtractPrompt(rawText) {
   return {
     system: 'You extract structured requirements from job descriptions. Return JSON only.',
-    prompt: `Job description:\n"""${rawText}"""\n\nReturn JSON only:\n{"requiredSkills":[],"niceToHave":[],"softSkills":[],"experienceLevel":"","responsibilities":[]}`,
+    prompt: `Job description:
+"""${rawText}"""
+
+Return JSON only:
+{
+  "jobTitle": "Extracted job title",
+  "company": "Extracted company name",
+  "requiredSkills": ["skill1", "skill2"],
+  "niceToHave": ["preferred skill 1", "preferred skill 2"],
+  "softSkills": ["soft skill 1"],
+  "experienceLevel": "e.g., Mid-level, Senior",
+  "responsibilities": ["duty 1"]
+}
+
+Make sure to separate preferred, "nice to have", or optional skills into "niceToHave", and mandatory skills into "requiredSkills".`,
   };
 }
 
@@ -43,48 +64,68 @@ function rubricScoringPrompt({ question, answerTranscript, targetRole, company, 
   const personaPrefix = persona ? `${personaSystemPrompt(persona)}\n\n` : '';
   return {
     system: `${personaPrefix}You are scoring one interview answer against a fixed rubric. Return JSON only, no preamble.`,
-    prompt: `You are scoring one interview answer against this rubric:
-Relevance(20) Structure(15) TechnicalAccuracy(20) BusinessThinking(10)
-DeliveryScore(10) STAR(10) Creativity(5)
-[DeliveryScore is precomputed from transcript signals: filler word rate,
- words-per-minute, sentence clarity — pass it in, do not re-derive it here]
+    prompt: `You are scoring one interview answer. Every category in the "scores" object MUST be graded strictly on a scale of 0 to 10:
+- Relevance (0-10): How directly the answer addresses the question.
+- Structure (0-10): Narrative coherence and organization.
+- TechnicalAccuracy (0-10): Correctness of technical concepts mentioned.
+- BusinessThinking (0-10): Strategic/commercial awareness.
+- STAR (0-10): STAR method structure compliance (Situation, Task, Action, Result).
+- Creativity (0-10): Innovation or custom tradeoffs discussed.
+
+Evaluate also the candidate's sentiment, engagement level, assessment confidence, and technical jargon opportunities.
+Identify specific words or sentences in the transcript where the candidate used vague or overly simple terminology where they should have used technical terminology, industry-standard jargon, or precise vocabulary—and provide optimal technical replacements in the "jargonHighlights" array.
 
 Question: ${question}
 Candidate Answer (transcribed): ${answerTranscript}
 Role Context: ${targetRole || ''}, Company: ${company || ''}
 Mode: ${mode}
 
-For each score below 70% of max, include the exact phrase from the
-transcript that justifies the deduction.
-
 If mode is neutral_assessment: omit encouraging language entirely,
 report only factual scores, gaps, and evidence — no "good job" phrasing.
 
 Return JSON only:
-{ "scores": {"relevance":0,"structure":0,"technicalAccuracy":0,"businessThinking":0,"star":0,"creativity":0}, "finalScore": 0,
-  "idealAnswer": "...", "gapNotes": "...",
-  "evidenceQuotes": [{"criterion":"", "quote":""}],
-  "technicalFlags": [{"claim":"", "correct":false, "explanation":""}] }`,
+{ 
+  "scores": {
+    "relevance": 0,
+    "structure": 0,
+    "technicalAccuracy": 0,
+    "businessThinking": 0,
+    "star": 0,
+    "creativity": 0
+  },
+  "sentiment": "confident" | "hesitant" | "anxious" | "neutral",
+  "engagement": 85, // 0 to 100 representing elaboration length and rate
+  "confidenceScore": 90, // 0 to 100 representing your assessment confidence
+  "jargonHighlights": [
+    { "wordOrPhrase": "saves things in memory", "replacement": "caches the state in Redis", "reason": "Mentions in-memory storage; using Redis shows precise technology selection." }
+  ],
+  "idealAnswer": "customized model answer given candidate's trajectory and role requirements",
+  "gapNotes": "missed technical details ...",
+  "evidenceQuotes": [{"criterion":"technicalAccuracy", "quote":"..."}],
+  "technicalFlags": [{"claim":"...", "correct":false, "explanation":"..."}]
+}`,
   };
 }
 
 // Section 9.2
-function adaptiveFollowUpPrompt({ lastAnswerTranscript, wordCount, shortHistory, persona }) {
+function adaptiveFollowUpPrompt({ lastAnswerTranscript, wordCount, shortHistory, persona, sentiment = 'neutral', engagement = 70 }) {
   const personaPrefix = persona ? `${personaSystemPrompt(persona)}\n\n` : '';
   return {
     system: `${personaPrefix}You generate ONE spoken follow-up question for a live voice interview. Return only the question text, nothing else.`,
     prompt: `Candidate said (transcribed): "${lastAnswerTranscript}"
 Word count: ${wordCount}
+Candidate Sentiment: ${sentiment}
+Candidate Engagement Level: ${engagement}/100
 Previous Q&A in this session: ${JSON.stringify(shortHistory)}
 
-If word count < 12 or answer is vague/generic:
-  -> Ask a gentle, open-ended spoken probe to get more detail
-    ("Can you tell me a bit more about that?")
-Else:
-  -> Ask ONE specific spoken follow-up that references a claim or detail
-    from their exact answer, probing tradeoffs/depth.
-Do not repeat earlier questions. Return only the question text
-(will be passed to TTS).`,
+Follow these adaptive conversational rules:
+1. FALLBACK FOR AMBIGUOUS/SHORT REPLIES: If the candidate transcript is extremely short (< 4 words like "I don't know", "skip", "no", "yes"), empty, or highly ambiguous, do NOT penalize them with a hard question. Ask a gentle, encouraging spoken prompt to guide them (e.g., "No worries at all, we can take it step-by-step. What comes to mind when you think about...").
+2. PACING ADJUSTMENT:
+   - If sentiment is 'anxious' or 'hesitant': slow down, speak supportively, and ask a gentler follow-up.
+   - If sentiment is 'confident' or 'defensive' and engagement is high (>= 80): ask a challenging, deep question testing architectural tradeoffs or limits of their strategy.
+3. CONTEXTUAL RELEVANCE: Build directly on their exact response instead of asking generic scripted questions. Do not repeat previous questions.
+
+Return only the follow-up question text (this is read aloud by TTS).`,
   };
 }
 
@@ -157,18 +198,28 @@ frequent/recent weak topics first. Return JSON only:
 
 // GitHub Analyzer + Project Explainer (blueprint 3B.15)
 function githubQuestionsPrompt({ repoName, description, readmeExcerpt, languages }) {
+  const langList = (languages || []).map(l => typeof l === 'string' ? l : l.name).join(', ') || 'unknown';
   return {
-    system: 'You generate spoken interview questions probing a candidate about their own real project/code. Return JSON only.',
+    system: 'You generate a detailed analysis and interview questions probing a candidate about their own real project/code. Return JSON only.',
     prompt: `Repository: ${repoName}
 Description: ${description || 'none provided'}
-Primary languages: ${(languages || []).join(', ') || 'unknown'}
+Primary languages: ${langList}
 README excerpt: """${(readmeExcerpt || '').slice(0, 2000)}"""
 
-Generate 5 spoken interview questions that probe the candidate's actual
-understanding of this specific project — architecture choices, tradeoffs,
-why they built it a certain way, what they'd change now. Avoid generic
-questions that could apply to any project. Return JSON only:
-{"questions": ["...", "..."]}`,
+Perform a technical analysis of this repository and:
+1. Explain what this project does and its core architecture.
+2. Group the interview questions into three categories: "Architecture", "Implementation", and "Testing & Tradeoffs".
+3. Return a list of 6 deep questions (2 per category).
+
+Return JSON matching this schema:
+{
+  "summary": "Clear, concise technical summary of what the project does and its architecture",
+  "categories": {
+    "Architecture": ["q1", "q2"],
+    "Implementation": ["q3", "q4"],
+    "Testing & Tradeoffs": ["q5", "q6"]
+  }
+}`,
   };
 }
 
@@ -190,8 +241,7 @@ Return JSON only: {"questions": ["...", "..."]}`,
 }
 
 module.exports = {
-  resumeParsePrompt,
-  atsScorePrompt,
+  resumeAnalyzePrompt,
   jdExtractPrompt,
   matchReportPrompt,
   interviewGeneratePrompt,

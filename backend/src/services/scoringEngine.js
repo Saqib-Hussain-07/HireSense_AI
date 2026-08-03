@@ -62,6 +62,23 @@ function computeDeliveryScore(transcript, durationSeconds) {
 }
 
 async function scoreAnswer({ question, answerTranscript, targetRole, company, mode, durationSeconds, persona, sessionType }) {
+  if (!answerTranscript || !answerTranscript.trim()) {
+    return {
+      rubricScores: { relevance: 0, structure: 0, technicalAccuracy: 0, businessThinking: 0, deliveryScore: 0, star: 0, creativity: 0 },
+      finalScore: 0,
+      idealAnswer: '',
+      gapNotes: 'No response was recorded from the candidate.',
+      evidenceQuotes: [],
+      technicalFlags: [],
+      starCheck: null,
+      sentiment: 'neutral',
+      engagement: 0,
+      confidenceScore: 100,
+      jargonHighlights: [],
+      deliveryMeta: { fillerCount: 0, wpm: 0, wordCount: 0 }
+    };
+  }
+
   const delivery = computeDeliveryScore(answerTranscript, durationSeconds);
 
   const { data } = await callAI({
@@ -69,32 +86,46 @@ async function scoreAnswer({ question, answerTranscript, targetRole, company, mo
     jsonOnly: true,
   });
 
-  const scores = {
-    ...data.scores,
-    deliveryScore: delivery.deliveryScore,
-  };
+  // Defensive validation: clip LLM scores strictly to 0-10
+  const relevance = Math.max(0, Math.min(10, data.scores?.relevance ?? 0));
+  const structure = Math.max(0, Math.min(10, data.scores?.structure ?? 0));
+  const technicalAccuracy = Math.max(0, Math.min(10, data.scores?.technicalAccuracy ?? 0));
+  const businessThinking = Math.max(0, Math.min(10, data.scores?.businessThinking ?? 0));
+  const starRaw = Math.max(0, Math.min(10, data.scores?.star ?? 0));
+  const creativity = Math.max(0, Math.min(10, data.scores?.creativity ?? 0));
 
-  // STAR detection only applies to behavioral questions (blueprint 9.5) — running
-  // it on technical/dsa/system_design answers would misclassify tradeoff
-  // discussions as "no Situation/Task" and produce a misleading starCheck.
+  let star = starRaw;
   let starCheck = null;
-  if (sessionType === 'behavioral') {
+  const isBehavioral = sessionType === 'behavioral';
+  if (isBehavioral) {
     starCheck = await detectStar(answerTranscript);
-    // fold STAR completeness into the rubric's existing `star` slot (max 10)
-    // so it still feeds finalScore without adding a new weighted column.
     const presentCount = ['situation', 'task', 'action', 'result'].filter((k) => starCheck[k]).length;
-    scores.star = Math.round((presentCount / 4) * 10);
+    star = Math.round((presentCount / 4) * 10);
   }
 
-  const rawTotal =
-    (scores.relevance || 0) +
-    (scores.structure || 0) +
-    (scores.technicalAccuracy || 0) +
-    (scores.businessThinking || 0) +
-    (scores.deliveryScore || 0) +
-    (scores.star || 0) +
-    (scores.creativity || 0);
-  const finalScore = Math.round((rawTotal / 90) * 100);
+  const scores = {
+    relevance,
+    structure,
+    technicalAccuracy,
+    businessThinking,
+    deliveryScore: delivery.deliveryScore,
+    star,
+    creativity,
+  };
+
+  // Compute weighted total using rubric weights
+  const weightedTotal =
+    relevance * 2 +
+    structure * 1.5 +
+    technicalAccuracy * 2 +
+    businessThinking * 1 +
+    delivery.deliveryScore * 1 +
+    (isBehavioral ? star * 1 : 0) +
+    creativity * 0.5;
+
+  const maxScore = isBehavioral ? 90 : 80;
+  // Scale score to 1 to 10
+  const finalScore = Math.max(1, Math.min(10, Math.round((weightedTotal / maxScore) * 10)));
 
   return {
     rubricScores: scores,
@@ -104,6 +135,10 @@ async function scoreAnswer({ question, answerTranscript, targetRole, company, mo
     evidenceQuotes: data.evidenceQuotes || [],
     technicalFlags: data.technicalFlags || [],
     starCheck,
+    sentiment: data.sentiment || 'neutral',
+    engagement: data.engagement || 70,
+    confidenceScore: data.confidenceScore || 85,
+    jargonHighlights: data.jargonHighlights || [],
     deliveryMeta: { fillerCount: delivery.fillerCount, wpm: delivery.wpm, wordCount: delivery.wordCount },
   };
 }

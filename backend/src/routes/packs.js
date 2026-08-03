@@ -8,10 +8,14 @@ router.use(requireAuth);
 // GET /api/packs?company=Google — list packs, optionally filtered by company.
 // Honest scope note: no admin curation/moderation layer — any user can
 // create a pack (see POST below), so treat these as community presets.
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 router.get('/', async (req, res) => {
   try {
     const { company } = req.query;
-    const filter = company ? { company: new RegExp(`^${company}$`, 'i') } : {};
+    const filter = company ? { company: new RegExp(`^${escapeRegExp(company)}$`, 'i') } : {};
     const packs = await InterviewPack.find(filter).sort({ createdAt: -1 }).limit(100);
     res.json(packs);
   } catch (err) {

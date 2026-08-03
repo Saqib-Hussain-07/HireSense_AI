@@ -7,11 +7,21 @@ import { api } from '../lib/api';
 export default function MatchPage() {
   const navigate = useNavigate();
   const { data: versions } = useQuery({ queryKey: ['resumeVersions'], queryFn: api.getResumeVersions });
+  const { data: jds } = useQuery({ queryKey: ['jobDescriptions'], queryFn: api.getJDs });
+  
   const [resumeId, setResumeId] = useState('');
   const [jdId, setJdId] = useState('');
+  const [customJdMode, setCustomJdMode] = useState(false);
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  // Auto-select latest JD if available
+  React.useEffect(() => {
+    if (jds && jds.length > 0 && !jdId) {
+      setJdId(jds[0]._id);
+    }
+  }, [jds, jdId]);
 
   async function handleMatch() {
     setBusy(true);
@@ -31,7 +41,7 @@ export default function MatchPage() {
       <PageHeader
         eyebrow="Step 03"
         title="Match & skill gaps"
-        description="Pick a resume version and paste the JD ID from the Job Description page to see your match %."
+        description="Pick a resume version and select an analyzed job description to see your match %."
       />
       <div className="p-8 max-w-2xl space-y-6">
         <div className="grid grid-cols-2 gap-4">
@@ -40,7 +50,7 @@ export default function MatchPage() {
             <select
               value={resumeId}
               onChange={(e) => setResumeId(e.target.value)}
-              className="mt-1 w-full bg-panel2 border border-hairline rounded-md px-3 py-2 text-sm"
+              className="mt-1 w-full bg-panel2 border border-hairline rounded-md px-3 py-2 text-sm text-white focus:outline-none"
             >
               <option value="">Select…</option>
               {versions?.map((r) => (
@@ -51,13 +61,37 @@ export default function MatchPage() {
             </select>
           </div>
           <div>
-            <label className="text-xs text-muted font-mono">JD id</label>
-            <input
-              value={jdId}
-              onChange={(e) => setJdId(e.target.value)}
-              placeholder="paste JD id"
-              className="mt-1 w-full bg-panel2 border border-hairline rounded-md px-3 py-2 text-sm"
-            />
+            <div className="flex justify-between items-center">
+              <label className="text-xs text-muted font-mono">job description</label>
+              <button 
+                type="button"
+                onClick={() => { setCustomJdMode(!customJdMode); setJdId(''); }}
+                className="text-[10px] text-zinc-500 hover:text-white underline font-mono"
+              >
+                {customJdMode ? 'use list' : 'paste custom ID'}
+              </button>
+            </div>
+            {customJdMode ? (
+              <input
+                value={jdId}
+                onChange={(e) => setJdId(e.target.value)}
+                placeholder="paste JD id"
+                className="mt-1 w-full bg-panel2 border border-hairline rounded-md px-3 py-2 text-sm text-white focus:outline-none"
+              />
+            ) : (
+              <select
+                value={jdId}
+                onChange={(e) => setJdId(e.target.value)}
+                className="mt-1 w-full bg-panel2 border border-hairline rounded-md px-3 py-2 text-sm text-white focus:outline-none"
+              >
+                <option value="">Select JD…</option>
+                {jds?.map((j) => (
+                  <option key={j._id} value={j._id}>
+                    {j.jobTitle || 'Untitled'} ({j.company || 'Unknown'})
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
 

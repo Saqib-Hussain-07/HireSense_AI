@@ -11,7 +11,7 @@ const WeaknessTracker = require('../models/WeaknessTracker');
 const { callAI } = require('./aiAdapter');
 const { weaknessTopicExtractPrompt } = require('../utils/prompts');
 
-const LOW_SCORE_THRESHOLD = 60; // out of 100 finalScore
+const LOW_SCORE_THRESHOLD = 5; // out of 10 finalScore (scores below 5/10 are flagged as weak)
 
 async function updateWeaknessTracker(userId, session) {
   const lowScoring = session.questions

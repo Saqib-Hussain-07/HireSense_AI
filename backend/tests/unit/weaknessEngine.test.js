@@ -16,7 +16,8 @@ describe('updateWeaknessTracker', () => {
   });
 
   test('does nothing (no AI call, no save) when there are no low-scoring answers', async () => {
-    const session = makeSession([{ finalScore: 85, questionText: 'q1' }, { finalScore: 0, questionText: 'q2' }]);
+    // Scores on 1-10 scale: 8 = strong answer (not weak), 0 = unanswered (excluded by finalScore > 0 check)
+    const session = makeSession([{ finalScore: 8, questionText: 'q1' }, { finalScore: 0, questionText: 'q2' }]);
     const result = await updateWeaknessTracker('user1', session);
     expect(result).toBeNull();
     expect(callAI).not.toHaveBeenCalled();
@@ -33,7 +34,8 @@ describe('updateWeaknessTracker', () => {
       this.save = saveMock;
     });
 
-    const session = makeSession([{ finalScore: 40, questionText: 'q1', gapNotes: 'missed containers' }]);
+    // finalScore: 3 is below the LOW_SCORE_THRESHOLD of 5 on the 1-10 scale
+    const session = makeSession([{ finalScore: 3, questionText: 'q1', gapNotes: 'missed containers' }]);
     const tracker = await updateWeaknessTracker('user1', session);
 
     expect(callAI).toHaveBeenCalledTimes(1);
@@ -51,7 +53,8 @@ describe('updateWeaknessTracker', () => {
     WeaknessTracker.findOne.mockResolvedValue(existingTracker);
     callAI.mockResolvedValue({ data: { weakTopics: ['Docker'] } });
 
-    const session = makeSession([{ finalScore: 30, questionText: 'q1' }]);
+    // finalScore: 2 is below the LOW_SCORE_THRESHOLD of 5 on the 1-10 scale
+    const session = makeSession([{ finalScore: 2, questionText: 'q1' }]);
     const tracker = await updateWeaknessTracker('user1', session);
 
     expect(tracker.weakTopics).toHaveLength(1);

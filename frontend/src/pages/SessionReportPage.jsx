@@ -21,14 +21,14 @@ function fmtDuration(seconds) {
 }
 
 function scoreColor(s) {
-  if (s >= 80) return '#5FB8A8';
-  if (s >= 55) return '#E8A94B';
+  if (s >= 8) return '#5FB8A8';
+  if (s >= 5.5) return '#E8A94B';
   return '#E1685A';
 }
 
 function scoreLabel(s) {
-  if (s >= 80) return 'Good';
-  if (s >= 55) return 'Average';
+  if (s >= 8) return 'Good';
+  if (s >= 5.5) return 'Average';
   return 'Needs Work';
 }
 
@@ -36,8 +36,8 @@ function scoreLabel(s) {
 function ScoreDonut({ score, size = 120 }) {
   const r = 42, stroke = 9;
   const circ = 2 * Math.PI * r;
-  const pct = Math.max(0, Math.min(100, score || 0));
-  const filled = (pct / 100) * circ;
+  const pct = Math.max(0, Math.min(10, score || 0));
+  const filled = (pct / 10) * circ;
   const color = scoreColor(pct);
   return (
     <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
@@ -49,7 +49,7 @@ function ScoreDonut({ score, size = 120 }) {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="font-display font-bold text-2xl text-text leading-none">{pct}</span>
-        <span className="text-[10px] text-faint font-mono mt-0.5">/ 100</span>
+        <span className="text-[10px] text-faint font-mono mt-0.5">/ 10</span>
       </div>
     </div>
   );
@@ -68,7 +68,7 @@ function ScoreBadge({ score }) {
 
 /* ── Rubric bar ─────────────────────────────────────────────── */
 function RubricBar({ label, value, max = 10 }) {
-  const pct = Math.round((value / max) * 100);
+  const pct = Math.round((value / max) * 10);
   const color = scoreColor(pct);
   return (
     <div className="space-y-1">
@@ -78,7 +78,7 @@ function RubricBar({ label, value, max = 10 }) {
       </div>
       <div className="h-1.5 bg-panel2 rounded-full overflow-hidden">
         <div className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${pct}%`, background: color }} />
+          style={{ width: `${(value / max) * 100}%`, background: color }} />
       </div>
     </div>
   );
@@ -109,6 +109,63 @@ function Card({ children, className = '' }) {
 /* ──────────────────────────────────────────────────────────────
    Question accordion item — only shows fields that have data
 ─────────────────────────────────────────────────────────────── */
+function HighlightedTranscript({ text, highlights }) {
+  if (!highlights || highlights.length === 0) {
+    return <span className="text-zinc-300">{text}</span>;
+  }
+
+  // Sort highlights by length descending to prevent substring collisions
+  const sorted = [...highlights].sort((a, b) => b.wordOrPhrase.length - a.wordOrPhrase.length);
+
+  let parts = [text];
+  for (const h of sorted) {
+    const phrase = h.wordOrPhrase;
+    if (!phrase) continue;
+    const nextParts = [];
+    for (const part of parts) {
+      if (typeof part === 'string') {
+        const index = part.toLowerCase().indexOf(phrase.toLowerCase());
+        if (index !== -1) {
+          const before = part.slice(0, index);
+          const match = part.slice(index, index + phrase.length);
+          const after = part.slice(index + phrase.length);
+          nextParts.push(before);
+          nextParts.push({
+            match,
+            replacement: h.replacement,
+            reason: h.reason
+          });
+          nextParts.push(after);
+        } else {
+          nextParts.push(part);
+        }
+      } else {
+        nextParts.push(part);
+      }
+    }
+    parts = nextParts;
+  }
+
+  return (
+    <span className="text-zinc-300">
+      {parts.map((p, i) => {
+        if (typeof p === 'string') return p;
+        return (
+          <span key={i} className="relative group inline-block mx-0.5 px-1 py-0.5 rounded bg-emerald-500/10 border-b border-dashed border-emerald-400 text-white cursor-help">
+            <span className="font-semibold">{p.match}</span>
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 bg-[#0f0f0f] border border-white/10 rounded-xl p-3 shadow-2xl text-[10px] font-mono text-zinc-400 min-w-[240px] text-left leading-normal">
+              <p className="text-emerald-400 font-bold mb-1">💡 Precise Technical Jargon</p>
+              <p className="text-white mb-1"><span className="text-zinc-500">Simplify:</span> "{p.match}"</p>
+              <p className="text-white mb-2"><span className="text-zinc-500">Replacement:</span> "{p.replacement}"</p>
+              <p className="text-[9px] text-zinc-500 leading-tight">{p.reason}</p>
+            </span>
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 function QuestionCard({ q, index, totalAnswered }) {
   const [open, setOpen] = useState(false);
   const hasAnswer = !!q.answerTranscript?.trim();
@@ -139,7 +196,7 @@ function QuestionCard({ q, index, totalAnswered }) {
         <div className="flex items-center gap-2 shrink-0">
           {hasScore && (
             <>
-              <span className="font-display font-bold text-lg" style={{ color }}>{q.finalScore}</span>
+              <span className="font-display font-bold text-lg" style={{ color }}>{q.finalScore}%</span>
               <ScoreBadge score={q.finalScore} />
             </>
           )}
@@ -156,9 +213,9 @@ function QuestionCard({ q, index, totalAnswered }) {
         </div>
       </button>
 
-      {/* Expanded detail — only real fields */}
+      {/* Expanded detail — side-by-side split comparison */}
       {open && (
-        <div className="px-5 pb-5 space-y-4 border-t border-hairline pt-4">
+        <div className="px-5 pb-5 space-y-5 border-t border-hairline pt-4">
 
           {/* Timed out notice */}
           {q.timedOut && (
@@ -167,20 +224,68 @@ function QuestionCard({ q, index, totalAnswered }) {
             </p>
           )}
 
-          {/* Answer transcript */}
-          {hasAnswer && (
-            <div>
-              <p className="text-xs font-mono text-faint uppercase mb-2">Your Answer</p>
-              <p className="text-sm text-muted leading-relaxed bg-panel2 rounded-xl px-4 py-3">
-                {q.answerTranscript}
-              </p>
+          {/* Side-by-side comparison */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="border border-white/5 bg-[#0a0a0a]/60 rounded-xl p-4 flex flex-col justify-between">
+              <div>
+                <p className="text-xs font-mono text-faint uppercase mb-2">Candidate's Transcribed Answer</p>
+                <div className="text-sm text-muted leading-relaxed bg-panel2 rounded-xl px-4 py-3 min-h-[80px]">
+                  {hasAnswer ? (
+                    <HighlightedTranscript text={q.answerTranscript} highlights={q.jargonHighlights} />
+                  ) : (
+                    <span className="text-zinc-600 italic">No answer recorded.</span>
+                  )}
+                </div>
+              </div>
             </div>
-          )}
 
-          {/* Rubric scores — only if AI actually scored */}
+            <div className="border border-white/5 bg-[#0a0a0a]/60 rounded-xl p-4 flex flex-col justify-between">
+              <div>
+                <p className="text-xs font-mono text-signal uppercase mb-2">Customized Model Answer</p>
+                <div className="text-sm text-muted leading-relaxed bg-signal/5 border border-signal/20 rounded-xl px-4 py-3 min-h-[80px]">
+                  {hasIdeal ? (
+                    <span className="text-zinc-300">{q.idealAnswer}</span>
+                  ) : (
+                    <span className="text-zinc-600 italic">No model answer generated.</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Confidence scoring & Observation markers */}
+          <div className="flex flex-wrap gap-x-4 gap-y-2 items-center text-[10px] font-mono text-zinc-500 bg-[#0a0a0a]/30 border border-white/5 rounded-xl px-4 py-2.5">
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              Observed Data: {q.answerTranscript ? q.answerTranscript.split(/\s+/).filter(Boolean).length : 0} words
+            </span>
+            <span className="text-zinc-800">|</span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+              AI Recommendation Confidence: {q.confidenceScore || 85}%
+            </span>
+            {q.sentiment && (
+              <>
+                <span className="text-zinc-800">|</span>
+                <span className="flex items-center gap-1.5">
+                  Sentiment: <span className="text-zinc-300 font-semibold">{q.sentiment}</span>
+                </span>
+              </>
+            )}
+            {q.engagement !== undefined && (
+              <>
+                <span className="text-zinc-800">|</span>
+                <span className="flex items-center gap-1.5">
+                  Engagement: <span className="text-zinc-300 font-semibold">{q.engagement}%</span>
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Rubric scores */}
           {hasRubric && (
             <div>
-              <p className="text-xs font-mono text-faint uppercase mb-3">Score Breakdown</p>
+              <p className="text-xs font-mono text-faint uppercase mb-3">Rubric Scores (Transparent 0-10 scale)</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {Object.entries(q.rubricScores)
                   .filter(([, v]) => v > 0)
@@ -191,7 +296,7 @@ function QuestionCard({ q, index, totalAnswered }) {
             </div>
           )}
 
-          {/* STAR check — only if AI ran it and any field was found */}
+          {/* STAR check */}
           {hasSTAR && (
             <div>
               <p className="text-xs font-mono text-faint uppercase mb-2">STAR Analysis</p>
@@ -203,7 +308,7 @@ function QuestionCard({ q, index, totalAnswered }) {
             </div>
           )}
 
-          {/* Evidence quotes — exact phrases flagged by AI */}
+          {/* Evidence quotes */}
           {hasEvidence && (
             <div>
               <p className="text-xs font-mono text-faint uppercase mb-2">Evidence Flagged by AI</p>
@@ -218,7 +323,7 @@ function QuestionCard({ q, index, totalAnswered }) {
             </div>
           )}
 
-          {/* Follow-up questions that were asked */}
+          {/* Follow-up questions */}
           {hasFollowUps && (
             <div>
               <p className="text-xs font-mono text-faint uppercase mb-2">Follow-up Questions Asked</p>
@@ -227,7 +332,7 @@ function QuestionCard({ q, index, totalAnswered }) {
                   <div key={j} className="border border-hairline rounded-xl px-3 py-2">
                     <p className="text-xs text-muted">{fu.q}</p>
                     {fu.aTranscript?.trim() && (
-                      <p className="text-xs text-faint mt-1.5 italic">→ {fu.aTranscript}</p>
+                      <p className="text-xs text-faint mt-1.5 italic font-mono">→ {fu.aTranscript}</p>
                     )}
                   </div>
                 ))}
@@ -235,21 +340,11 @@ function QuestionCard({ q, index, totalAnswered }) {
             </div>
           )}
 
-          {/* Pushback — only if AI generated one */}
+          {/* Pushback */}
           {hasPushback && (
             <div className="bg-alert/10 border border-alert/25 rounded-xl px-4 py-3">
               <p className="text-xs font-mono text-alert uppercase mb-1">Pushback from AI</p>
               <p className="text-sm text-alert">{q.pushback}</p>
-            </div>
-          )}
-
-          {/* Ideal answer — what a strong answer would look like */}
-          {hasIdeal && (
-            <div>
-              <p className="text-xs font-mono text-signal uppercase mb-2">Ideal Answer</p>
-              <p className="text-sm text-muted leading-relaxed bg-signal/5 border border-signal/20 rounded-xl px-4 py-3">
-                {q.idealAnswer}
-              </p>
             </div>
           )}
 
@@ -259,11 +354,6 @@ function QuestionCard({ q, index, totalAnswered }) {
               <p className="text-xs font-mono text-faint uppercase mb-2">Gap Notes</p>
               <p className="text-sm text-muted leading-relaxed">{q.gapNotes}</p>
             </div>
-          )}
-
-          {/* Completely unanswered / no AI data */}
-          {!hasAnswer && !hasScore && !q.timedOut && (
-            <p className="text-sm text-faint text-center py-2">This question was not answered.</p>
           )}
         </div>
       )}

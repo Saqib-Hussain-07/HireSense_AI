@@ -11,6 +11,17 @@ const { jdExtractPrompt } = require('../utils/prompts');
 const router = express.Router();
 router.use(requireAuth);
 
+router.get('/', async (req, res) => {
+  try {
+    const jds = await JobDescription.find({ userId: req.userId })
+      .select('jobTitle company createdAt')
+      .sort({ createdAt: -1 });
+    res.json(jds);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to list job descriptions', detail: err.message });
+  }
+});
+
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 /**
@@ -21,8 +32,17 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
  * JS) may come back thin; the fallback in that case is to ask the user to
  * paste the text instead, same as the Phase 1 path.
  */
+function cleanUrl(url) {
+  let cleaned = (url || '').trim();
+  if (!/^https?:\/\//i.test(cleaned)) {
+    cleaned = 'https://' + cleaned;
+  }
+  return cleaned;
+}
+
 async function fetchJDTextFromUrl(url) {
-  const res = await fetch(url, {
+  const targetUrl = cleanUrl(url);
+  const res = await fetch(targetUrl, {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; HireSenseAI/1.0)' },
   });
   if (!res.ok) throw new Error(`Could not fetch that URL (status ${res.status})`);
@@ -62,6 +82,8 @@ router.post('/analyze', async (req, res) => {
       userId: req.userId,
       rawText: text,
       sourceUrl: url || null,
+      jobTitle: data.jobTitle || '',
+      company: data.company || '',
       requiredSkills: data.requiredSkills || [],
       niceToHave: data.niceToHave || [],
       softSkills: data.softSkills || [],
@@ -105,6 +127,8 @@ router.post('/upload-pdf', upload.single('jd'), async (req, res) => {
       userId: req.userId,
       rawText: text,
       sourceUrl: null,
+      jobTitle: data.jobTitle || '',
+      company: data.company || '',
       requiredSkills: data.requiredSkills || [],
       niceToHave: data.niceToHave || [],
       softSkills: data.softSkills || [],

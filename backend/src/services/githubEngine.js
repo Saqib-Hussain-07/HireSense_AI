@@ -37,7 +37,12 @@ async function fetchRepoData(repoUrl) {
   const repoJson = await repoRes.json();
 
   const langRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/languages`, { headers });
-  const languages = langRes.ok ? Object.keys(await langRes.json()) : [];
+  const langData = langRes.ok ? await langRes.json() : {};
+  const totalBytes = Object.values(langData).reduce((a, b) => a + b, 0);
+  const languages = Object.entries(langData).map(([name, bytes]) => ({
+    name,
+    percentage: totalBytes ? Math.round((bytes / totalBytes) * 100) : 0,
+  })).sort((a, b) => b.percentage - a.percentage);
 
   let readmeExcerpt = '';
   try {
@@ -63,7 +68,11 @@ async function fetchRepoData(repoUrl) {
 async function analyzeGithubRepo(repoUrl) {
   const repoData = await fetchRepoData(repoUrl);
   const { data } = await callAI({ ...githubQuestionsPrompt(repoData), jsonOnly: true });
-  return { repo: repoData, questions: data.questions || [] };
+  return {
+    repo: repoData,
+    summary: data.summary || '',
+    categories: data.categories || { Architecture: [], Implementation: [], 'Testing & Tradeoffs': [] }
+  };
 }
 
 module.exports = { analyzeGithubRepo };

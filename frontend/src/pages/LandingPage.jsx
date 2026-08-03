@@ -1,35 +1,87 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { MiniNavbar, CanvasRevealEffect } from '../components/ui/sign-in-flow-1.jsx';
 
 /* ─── Static data ──────────────────────────────────────────────────────── */
 const FEATURES = [
   {
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-onair">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white">
         <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round"/>
         <path d="M13 3v6h6" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
-    title: 'Your CV, decoded in seconds',
-    desc: 'Upload your resume and the job description. HireSense maps your skills against what the role actually demands — and flags what\'s missing before an interviewer does.',
+    title: 'CV & Resume Parser',
+    desc: 'Deeply analyzes your resume in PDF/DOCX to score ATS compatibility, profile your skills, and flag missing keywords.',
   },
   {
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-signal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white">
         <path d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
-    title: 'A real interview. Right now.',
-    desc: 'Speak your answers aloud. The AI listens, adapts follow-up questions based on exactly what you said, and challenges weak claims — the same way a senior interviewer would.',
+    title: 'Adaptive Spoken Interviews',
+    desc: 'Speak your answers aloud. The AI adapts follow-up questions based on what you said, challenging weak claims realistically.',
   },
   {
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-onair">
-        <path d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.355a3.375 3.375 0 01-3 0M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" strokeLinecap="round" strokeLinejoin="round"/>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white">
+        <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
-    title: 'Know what to fix. Not just that something\'s wrong.',
-    desc: 'Every answer is scored on relevance, structure, and clarity. You get exact quotes from your own words, an ideal answer to compare against, and a 7-day improvement plan.',
+    title: 'GitHub Repo Analyzer',
+    desc: 'Input any public repository URL to generate highly specific spoken questions probing your actual understanding of the code.',
+  },
+  {
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+    title: '7-Day Growth Planner',
+    desc: 'Automatically tracks your weak areas across interview sessions and designs a custom, structured learning plan.',
+  },
+  {
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white">
+        <rect x="2" y="10" width="20" height="12" rx="2" ry="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M12 22V10M17 22V14M7 22V14M4 10V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+    title: 'Company Questions Bank',
+    desc: 'Crowdsourced bank of actual interview questions asked at top companies like Google, Stripe, Meta, and others.',
+  },
+  {
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+    title: 'Curated Question Packs',
+    desc: 'Practice targeted question pools grouped by core categories (System Design, Frontend, Backend, Behavioral, etc.).',
+  },
+  {
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white">
+        <circle cx="12" cy="12" r="10" strokeLinecap="round" strokeLinejoin="round"/>
+        <line x1="12" y1="8" x2="12" y2="12" strokeLinecap="round" strokeLinejoin="round"/>
+        <line x1="12" y1="16" x2="12.01" y2="16" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+    title: 'Visual Skill Radar',
+    desc: 'Tracks proficiency metrics on a Recharts-powered radar map and maps chronological score growth over time.',
+  },
+  {
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeLinecap="round" strokeLinejoin="round"/>
+        <polyline points="14,2 14,8 20,8" strokeLinecap="round" strokeLinejoin="round"/>
+        <line x1="16" y1="13" x2="8" y2="13" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+    title: 'Evidence-Based Reports',
+    desc: 'Read exact quotes of where you stumbled, compare with ideal answers, and review speech delivery metrics.',
   },
 ];
 
@@ -46,57 +98,6 @@ const STEPS = [
   { n: '03', label: 'Speak your interview aloud', sub: 'Adaptive AI follows your answers' },
   { n: '04', label: 'Get your full report', sub: 'Scores · quotes · ideal answers' },
 ];
-
-const STATS = [
-  { value: 12400, suffix: '+', label: 'Interviews coached' },
-  { value: 91, suffix: '%', label: 'Report improved offers' },
-  { value: 3.2, suffix: '×', label: 'Higher callback rate', isFloat: true },
-];
-
-/* ─── Animated counter hook ─────────────────────────────────────────────── */
-function useCounter(target, duration = 1800, isFloat = false) {
-  const [count, setCount] = useState(0);
-  const [active, setActive] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setActive(true); obs.disconnect(); } },
-      { threshold: 0.5 }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!active) return;
-    const start = performance.now();
-    const step = (now) => {
-      const progress = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setCount(isFloat ? +(target * eased).toFixed(1) : Math.floor(target * eased));
-      if (progress < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, [active, target, duration, isFloat]);
-
-  return { count, ref };
-}
-
-/* ─── Stat counter component ────────────────────────────────────────────── */
-function StatCounter({ value, suffix, label, isFloat }) {
-  const { count, ref } = useCounter(value, 1800, isFloat);
-  return (
-    <div ref={ref} className="text-center px-8">
-      <p className="font-mono text-4xl md:text-5xl text-onair font-semibold tracking-tight">
-        {isFloat ? count.toFixed(1) : count.toLocaleString()}{suffix}
-      </p>
-      <p className="text-sm text-muted mt-2 font-body">{label}</p>
-    </div>
-  );
-}
 
 /* ─── Animated score card (hero right column) ────────────────────────────── */
 function ScoreCard() {
@@ -118,57 +119,56 @@ function ScoreCard() {
 
   return (
     <div className="animate-hero-card w-full max-w-sm mx-auto">
-      <div className="bg-panel border border-hairline rounded-2xl p-6 shadow-[0_0_60px_rgba(232,169,75,0.08)]">
+      <div className="bg-[#0a0a0a]/80 border border-white/10 rounded-2xl p-6 shadow-[0_0_50px_rgba(255,255,255,0.03)] backdrop-blur-md relative overflow-hidden group hover:border-white/20 transition-all duration-500">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.02)_0%,transparent_60%)] pointer-events-none" />
+        
         {/* File header */}
-        <div className="flex items-center gap-3 mb-5 pb-4 border-b border-hairline">
-          <div className="w-9 h-9 rounded-lg bg-panel2 border border-hairline flex items-center justify-center text-lg flex-shrink-0">📄</div>
+        <div className="flex items-center gap-3 mb-5 pb-4 border-b border-white/10 relative z-10">
+          <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-lg flex-shrink-0">📄</div>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-text truncate">senior_engineer_cv.pdf</p>
-            <p className="text-xs text-muted">→ Senior Frontend Engineer at Stripe</p>
+            <p className="text-sm font-medium text-white truncate">senior_engineer_cv.pdf</p>
+            <p className="text-xs text-white/40">→ Senior Frontend Engineer at Stripe</p>
           </div>
         </div>
 
         {/* Score gauge */}
-        <div className="mb-5">
+        <div className="mb-5 relative z-10">
           <div className="flex justify-between items-end mb-2">
-            <p className="text-xs text-muted font-mono uppercase tracking-wider">Match Score</p>
-            <p className="font-mono text-3xl text-onair font-semibold leading-none">{scoreDisplay}<span className="text-lg text-muted">/100</span></p>
+            <p className="text-xs text-white/40 font-mono uppercase tracking-wider">Match Score</p>
+            <p className="font-mono text-3xl text-white font-semibold leading-none">{scoreDisplay}<span className="text-lg text-white/40">/100</span></p>
           </div>
-          <div className="h-2 bg-panel2 rounded-full overflow-hidden">
+          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-onair to-onair2 rounded-full animate-gauge"
+              className="h-full bg-gradient-to-r from-white/60 to-white rounded-full animate-gauge"
               style={{ width: `${scoreDisplay}%`, transition: 'width 0.1s linear' }}
             />
           </div>
         </div>
 
         {/* Chip indicators */}
-        <div className="flex flex-wrap gap-2">
-          <span className="animate-chip-1 inline-flex items-center gap-1.5 text-xs bg-signal/15 text-signal border border-signal/25 rounded-full px-2.5 py-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-signal" />ATS Ready
+        <div className="flex flex-wrap gap-2 relative z-10">
+          <span className="animate-chip-1 inline-flex items-center gap-1.5 text-xs bg-white/5 text-white/80 border border-white/10 rounded-full px-2.5 py-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-white/70 animate-pulse" />ATS Optimized
           </span>
-          <span className="animate-chip-2 inline-flex items-center gap-1.5 text-xs bg-onair/10 text-onair border border-onair/20 rounded-full px-2.5 py-1">
+          <span className="animate-chip-2 inline-flex items-center gap-1.5 text-xs bg-white/5 text-white/80 border border-white/10 rounded-full px-2.5 py-1">
             Skills Gap: 2
-          </span>
-          <span className="animate-chip-3 inline-flex items-center gap-1.5 text-xs bg-panel2 text-muted border border-hairline rounded-full px-2.5 py-1">
-            Score: 84 / 100
           </span>
         </div>
 
         {/* Waveform — voice active indicator */}
-        <div className="mt-5 pt-4 border-t border-hairline">
+        <div className="mt-5 pt-4 border-t border-white/10 relative z-10">
           <div className="flex items-center gap-2">
             <div className="flex items-end gap-0.5 h-6">
               {[3,5,7,5,8,4,6,3].map((h, i) => (
                 <span
                   key={i}
-                  className="wave-bar w-1 rounded-full bg-signal/70"
+                  className="wave-bar w-1 rounded-full bg-white/50"
                   style={{ height: `${h * 3}px` }}
                 />
               ))}
             </div>
-            <p className="text-xs text-muted font-mono">Voice interview active</p>
-            <span className="ml-auto text-xs text-faint italic">demo preview</span>
+            <p className="text-xs text-white/40 font-mono">Voice interview active</p>
+            <span className="ml-auto text-xs text-white/20 italic">demo</span>
           </div>
         </div>
       </div>
@@ -176,175 +176,231 @@ function ScoreCard() {
   );
 }
 
-/* ─── Main landing page ──────────────────────────────────────────────────── */
+/* ─── Recreated landing page ─────────────────────────────────────────────── */
 export default function LandingPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-ink text-text overflow-x-hidden">
+    <div className="min-h-screen bg-black text-white overflow-x-hidden font-body selection:bg-white/20 selection:text-white">
+      
+      {/* Floating Glassmorphism Navbar */}
+      <MiniNavbar />
 
-      {/* ── Nav bar ── */}
-      <header className="border-b border-hairline/50 px-6 md:px-12 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <span className="w-2 h-2 rounded-full bg-onair pulse-onair" />
-          <span className="font-display font-semibold text-base tracking-tight">HireSense AI</span>
+      {/* Hero Section with CanvasRevealEffect */}
+      <section className="relative min-h-screen flex items-center pt-24 pb-16 px-6 md:px-12">
+        {/* WebGL Dot Background with Vignette */}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+          <CanvasRevealEffect
+            animationSpeed={3.5}
+            containerClassName="bg-black"
+            colors={[
+              [255, 255, 255],
+              [255, 255, 255],
+            ]}
+            dotSize={5}
+            reverse={false}
+          />
+          {/* Ambient Glow Orbs */}
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-zinc-800/10 rounded-full filter blur-3xl pointer-events-none animate-pulse duration-[8000ms]" />
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-white/[0.02] rounded-full filter blur-3xl pointer-events-none animate-pulse duration-[10000ms]" />
+          {/* Fades the ThreeJS canvas beautifully towards the bottom */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(0,0,0,0.15)_0%,_rgba(0,0,0,1)_100%)]" />
+          <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-black to-transparent" />
         </div>
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/login')} className="text-sm text-muted hover:text-text transition-colors">Sign in</button>
-          <button
-            onClick={() => navigate('/signup')}
-            className="text-sm bg-onair text-ink font-medium rounded-full px-4 py-2 hover:bg-onair2 transition-colors"
+
+        <div className="relative z-10 max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+          {/* Left Column: Heading and copy */}
+          <motion.div 
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="lg:col-span-7 space-y-6 text-left"
           >
-            Get started →
-          </button>
-        </div>
-      </header>
-
-      {/* ── Hero ── */}
-      <section className="px-6 md:px-12 pt-16 pb-20 md:pt-24 md:pb-28">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16 items-center">
-
-          {/* Left: copy */}
-          <div>
-            <div className="inline-flex items-center gap-2 bg-onair/10 border border-onair/20 rounded-full px-3.5 py-1.5 mb-8">
-              <span className="w-1.5 h-1.5 rounded-full bg-onair" />
-              <span className="text-xs font-mono text-onair tracking-wider uppercase">AI-Powered Interview Intelligence</span>
+            <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3.5 py-1.5 backdrop-blur-sm shadow-[0_0_15px_rgba(255,255,255,0.02)]">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              <span className="text-xs font-mono text-white/70 tracking-wider uppercase">
+                AI-Powered Interview Coach
+              </span>
             </div>
 
-            <h1 className="font-display font-semibold text-4xl md:text-5xl lg:text-6xl leading-[1.1] mb-3">
-              Know exactly where
-            </h1>
-            <h1 className="font-serif italic text-4xl md:text-5xl lg:text-6xl leading-[1.1] text-onair mb-7">
-              you stand before the room.
-            </h1>
+            <div className="space-y-2">
+              <h1 className="font-display font-bold text-4xl sm:text-5xl lg:text-6xl leading-[1.05] tracking-tight text-white">
+                Know exactly where
+              </h1>
+              <h1 className="font-serif italic text-4xl sm:text-5xl lg:text-6xl leading-[1.05] text-white/80">
+                you stand before the room.
+              </h1>
+            </div>
 
-            <p className="text-muted text-lg leading-relaxed max-w-lg mb-10">
-              HireSense AI reads your CV, understands the job, and coaches you through
-              a real spoken interview — then tells you precisely what to fix.
+            <p className="text-white/60 text-base sm:text-lg leading-relaxed max-w-lg font-body">
+              HireSense AI reads your CV, understands the role, and coaches you through
+              a real adaptive spoken interview — then gives you precise scorecards and metrics to improve.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col sm:flex-row gap-4 pt-2">
               <button
                 id="cta-signup"
                 onClick={() => navigate('/signup')}
-                className="bg-onair text-ink font-medium rounded-full px-7 py-3.5 text-sm hover:bg-onair2 transition-colors shadow-glow"
+                className="bg-white text-black font-semibold rounded-full px-8 py-4 text-sm hover:bg-white/90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_30px_rgba(255,255,255,0.25)] flex items-center justify-center gap-2 group"
               >
-                Analyse My Resume — It's Free →
+                Analyse My Resume — It's Free
+                <span className="transition-transform group-hover:translate-x-1">→</span>
               </button>
               <button
                 onClick={() => navigate('/login')}
-                className="text-sm text-muted hover:text-text transition-colors px-4 py-3.5"
+                className="text-sm font-semibold text-white/60 hover:text-white transition-colors px-6 py-4 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 backdrop-blur-sm hover:scale-[1.02] active:scale-[0.98]"
               >
-                Already have an account? Sign in
+                Sign In
               </button>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Right: animated score card */}
-          <div className="flex justify-center md:justify-end">
+          {/* Right Column: Animated scorecard mock */}
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+            className="lg:col-span-5 flex justify-center lg:justify-end"
+          >
             <ScoreCard />
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Features Grid */}
+      <section id="features" className="relative z-10 px-6 md:px-12 py-24 scroll-mt-24">
+        <div className="max-w-5xl mx-auto space-y-16">
+          <div className="text-center space-y-3">
+            <p className="text-xs font-mono text-white/50 uppercase tracking-widest">Capabilities</p>
+            <h2 className="font-display font-bold text-3xl sm:text-4xl tracking-tight">A complete, intelligent coaching platform.</h2>
           </div>
-        </div>
-      </section>
 
-      {/* ── Social proof strip ── */}
-      <section className="border-y border-hairline bg-panel/30 py-10">
-        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-0 divide-y sm:divide-y-0 sm:divide-x divide-hairline">
-          {STATS.map((s) => (
-            <StatCounter key={s.label} {...s} />
-          ))}
-        </div>
-      </section>
-
-      {/* ── Feature triptych ── */}
-      <section className="px-6 md:px-12 py-20">
-        <div className="max-w-5xl mx-auto">
-          <p className="text-xs font-mono text-onair uppercase tracking-widest text-center mb-3">What it does</p>
-          <h2 className="font-display font-semibold text-3xl text-center mb-12">Three things. Done exceptionally well.</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {FEATURES.map((f) => (
-              <div key={f.title} className="feature-card bg-panel border border-hairline rounded-2xl p-6">
-                <div className="w-11 h-11 rounded-xl bg-panel2 border border-hairline flex items-center justify-center mb-5">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="grid grid-cols-1 md:grid-cols-2 gap-6"
+          >
+            {FEATURES.map((f, i) => (
+              <div key={f.title} className="group bg-[#0a0a0a]/60 border border-white/5 hover:border-white/20 hover:bg-white/[0.02] hover:shadow-[0_0_40px_rgba(255,255,255,0.02)] transition-all duration-500 rounded-2xl p-7 space-y-5 relative overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.02)_0%,transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center relative z-10">
                   {f.icon}
                 </div>
-                <p className="font-display font-semibold text-text mb-3 leading-snug">{f.title}</p>
-                <p className="text-sm text-muted leading-relaxed">{f.desc}</p>
+                <div className="space-y-2 relative z-10">
+                  <h3 className="font-display font-semibold text-white text-lg">{f.title}</h3>
+                  <p className="text-sm text-white/50 leading-relaxed font-body">{f.desc}</p>
+                </div>
               </div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* ── Before you begin card ── */}
-      <section className="px-6 md:px-12 pb-16">
-        <div className="max-w-3xl mx-auto">
-          <div className="bg-panel border border-hairline rounded-2xl p-7 border-l-4 border-l-onair/60">
-            <p className="text-xs font-mono text-onair uppercase tracking-widest mb-5">✦ What to have ready</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {/* Checklist section */}
+      <section id="checklist" className="relative z-10 px-6 md:px-12 pb-24 scroll-mt-24">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="max-w-3xl mx-auto"
+        >
+          <div className="bg-[#0a0a0a]/60 border border-white/10 hover:border-white/20 rounded-3xl p-8 sm:p-10 space-y-6 relative overflow-hidden shadow-[0_0_30px_rgba(255,255,255,0.01)] transition-all duration-500 group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full filter blur-2xl pointer-events-none" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.015)_0%,transparent_60%)] pointer-events-none" />
+            
+            <p className="text-xs font-mono text-white/50 uppercase tracking-widest relative z-10">✦ What to have ready</p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-2 relative z-10">
               {CHECKLIST.map((item) => (
-                <div key={item.text} className="flex items-start gap-3">
-                  <span className="text-lg leading-none mt-0.5">{item.icon}</span>
-                  <span className="text-sm text-muted leading-relaxed">{item.text}</span>
+                <div key={item.text} className="flex items-start gap-4">
+                  <span className="text-xl leading-none mt-0.5">{item.icon}</span>
+                  <span className="text-sm text-white/60 leading-relaxed font-body">{item.text}</span>
                 </div>
               ))}
             </div>
-            <p className="text-sm text-faint mt-5 pt-4 border-t border-hairline">That's it. HireSense does the rest.</p>
+            
+            <p className="text-xs text-white/30 pt-4 border-t border-white/5 font-mono relative z-10">
+              That's it. HireSense does the rest.
+            </p>
           </div>
-        </div>
+        </motion.div>
       </section>
 
-      {/* ── Process rail ── */}
-      <section className="px-6 md:px-12 py-16 border-t border-hairline">
-        <div className="max-w-5xl mx-auto">
-          <p className="text-xs font-mono text-onair uppercase tracking-widest text-center mb-3">How it works</p>
-          <h2 className="font-display font-semibold text-3xl text-center mb-14">Four steps. One honest result.</h2>
+      {/* Process flow steps */}
+      <section id="steps" className="relative z-10 px-6 md:px-12 py-24 border-t border-white/10 scroll-mt-24">
+        <div className="max-w-5xl mx-auto space-y-16">
+          <div className="text-center space-y-3">
+            <p className="text-xs font-mono text-white/50 uppercase tracking-widest">Process</p>
+            <h2 className="font-display font-bold text-3xl sm:text-4xl tracking-tight">Four steps. One honest outcome.</h2>
+          </div>
 
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-0">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="flex flex-col lg:flex-row items-stretch lg:items-start gap-8 lg:gap-0"
+          >
             {STEPS.map((step, i) => (
               <React.Fragment key={step.n}>
-                <div className="flex flex-col items-center text-center flex-1 px-4">
-                  <div className="w-10 h-10 rounded-full bg-onair/10 border border-onair/30 flex items-center justify-center mb-4">
-                    <span className="font-mono text-xs text-onair font-semibold">{step.n}</span>
+                <div className="flex flex-col items-center text-center flex-1 px-4 space-y-4 group">
+                  <div className="w-10 h-10 rounded-full bg-white/5 border border-white/20 group-hover:border-white/50 group-hover:bg-white/10 transition-all duration-300 flex items-center justify-center shadow-inner">
+                    <span className="font-mono text-xs text-white font-semibold">{step.n}</span>
                   </div>
-                  <p className="font-medium text-text text-sm mb-1 leading-snug">{step.label}</p>
-                  <p className="text-xs text-muted leading-relaxed">{step.sub}</p>
+                  <div className="space-y-1">
+                    <h4 className="font-semibold text-white text-sm font-display">{step.label}</h4>
+                    <p className="text-xs text-white/40 leading-relaxed font-body">{step.sub}</p>
+                  </div>
                 </div>
                 {i < STEPS.length - 1 && (
-                  <div className="hidden md:block flex-shrink-0 w-16 text-center">
-                    <div className="h-px w-full border-t border-dashed border-onair/30" />
+                  <div className="hidden lg:flex items-center justify-center flex-shrink-0 w-8 h-10">
+                    <div className="h-px w-6 border-t border-dashed border-white/20" />
                   </div>
                 )}
               </React.Fragment>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* ── Footer CTA ── */}
-      <section className="px-6 md:px-12 py-24 border-t border-hairline bg-panel/20 text-center">
-        <p className="font-serif italic text-3xl md:text-4xl text-text mb-3 leading-snug">
-          "Your next interview is already scheduled.
-        </p>
-        <p className="font-serif italic text-3xl md:text-4xl text-onair mb-10 leading-snug">
-          The question is whether you'll be ready."
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+      {/* Footer CTA */}
+      <section className="relative z-10 px-6 md:px-12 py-28 border-t border-white/10 bg-gradient-to-b from-transparent to-white/[0.01] text-center space-y-8">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="space-y-3"
+        >
+          <p className="font-serif italic text-3xl sm:text-4xl text-white/90">
+            "Your next interview is already scheduled."
+          </p>
+          <p className="font-serif italic text-2xl sm:text-3xl text-white/50">
+            The question is whether you'll be ready.
+          </p>
+        </motion.div>
+        
+        <div className="flex justify-center pt-4">
           <button
             onClick={() => navigate('/signup')}
-            className="bg-onair text-ink font-medium rounded-full px-8 py-3.5 text-sm hover:bg-onair2 transition-colors shadow-glow"
+            className="bg-white text-black font-semibold rounded-full px-8 py-4 text-sm hover:bg-white/90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_25px_rgba(255,255,255,0.15)] flex items-center justify-center gap-2 group"
           >
-            Start Your Free Analysis →
+            Start Your Free Analysis
+            <span className="transition-transform group-hover:translate-x-1">→</span>
           </button>
         </div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer className="border-t border-hairline px-6 md:px-12 py-6 flex items-center justify-between">
+      {/* Footer */}
+      <footer className="relative z-10 border-t border-white/10 px-6 md:px-12 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-onair" />
-          <span className="text-xs text-faint font-mono">HireSense AI</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+          <span className="text-xs text-white/40 font-mono">HireSense AI</span>
         </div>
-        <p className="text-xs text-faint">AI-powered interview coaching</p>
+        <p className="text-xs text-white/30 font-mono">AI-powered interview coaching · © 2026</p>
       </footer>
 
     </div>

@@ -6,7 +6,7 @@ const Resume = require('../models/Resume');
 const User = require('../models/User');
 const { requireAuth } = require('../middleware/auth');
 const { callAI } = require('../services/aiAdapter');
-const { resumeParsePrompt, atsScorePrompt } = require('../utils/prompts');
+const { resumeAnalyzePrompt } = require('../utils/prompts');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -54,21 +54,20 @@ router.post('/upload', upload.single('resume'), async (req, res) => {
     const user = await User.findById(req.userId);
     const priorCount = await Resume.countDocuments({ userId: req.userId });
 
-    // ── AI parsing + ATS scoring ─────────────────────────────────────────────
+    // ── AI parsing + ATS scoring (combined single AI call for speed and reliability) ──
     let parsed = { skills: [], education: [], experience: [], projects: [], certifications: [] };
     let atsScore = 0, missingKeywords = [], weakBullets = [];
 
     if (rawText.trim().length > 20) {
       try {
-        const parseResult = await callAI({ ...resumeParsePrompt(rawText), jsonOnly: true });
-        parsed = parseResult.data;
-        const atsResult = await callAI({
-          ...atsScorePrompt(parsed, user?.targetRole),
+        const result = await callAI({
+          ...resumeAnalyzePrompt(rawText, user?.targetRole),
           jsonOnly: true,
         });
-        atsScore       = atsResult.data.atsScore;
-        missingKeywords = atsResult.data.missingKeywords;
-        weakBullets    = atsResult.data.weakBullets;
+        parsed = result.data.parsed || parsed;
+        atsScore = result.data.atsScore || 0;
+        missingKeywords = result.data.missingKeywords || [];
+        weakBullets = result.data.weakBullets || [];
       } catch (aiErr) {
         console.error('[resume] AI parsing/ATS failed:', aiErr.message);
         // Upload still succeeds — structured fields stay empty.

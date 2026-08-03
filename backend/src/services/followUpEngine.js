@@ -10,11 +10,11 @@
 const { callAI } = require('./aiAdapter');
 const { adaptiveFollowUpPrompt, pushbackPrompt } = require('../utils/prompts');
 
-async function getNextFollowUp({ lastAnswerTranscript, shortHistory, persona }) {
+async function getNextFollowUp({ lastAnswerTranscript, shortHistory, persona, sentiment, engagement }) {
   const wordCount = (lastAnswerTranscript || '').trim().split(/\s+/).filter(Boolean).length;
 
   const { data: _unused, text } = await callAI({
-    ...adaptiveFollowUpPrompt({ lastAnswerTranscript, wordCount, shortHistory, persona }),
+    ...adaptiveFollowUpPrompt({ lastAnswerTranscript, wordCount, shortHistory, persona, sentiment, engagement }),
     jsonOnly: false,
   });
 
