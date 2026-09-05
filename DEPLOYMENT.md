@@ -152,12 +152,16 @@ vercel
 #   Framework Preset: Vite
 #   Build command:    npm run build
 #   Output dir:       dist
-#   Environment var:  VITE_API_URL = https://hiresense-api.onrender.com
+#   Environment vars:
+#     VITE_API_URL = https://hiresense-api.onrender.com
+#     VITE_CLERK_PUBLISHABLE_KEY = pk_test_... (from Clerk dashboard)
 ```
 
 Create `frontend/vercel.json`:
 ```json
 {
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
