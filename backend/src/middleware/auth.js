@@ -52,7 +52,6 @@ async function verifyClerkToken(token) {
 
   const orConditions = [
     { clerkId },
-    { clerkId: new RegExp(`^${clerkId}$`, 'i') },
     { email: fallbackEmail },
   ];
   if (email) orConditions.push({ email });

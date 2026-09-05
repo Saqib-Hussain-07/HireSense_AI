@@ -47,10 +47,9 @@ router.post('/clerk-session', async (req, res) => {
     const fallbackEmail = `${clerkId.toLowerCase()}@clerk.local`;
     const name = reqName || payload.name || payload.email || (email ? email.split('@')[0] : 'User');
 
-    // Upsert — match by clerkId, case-insensitive clerkId, fallback email, or real email
+    // Upsert — match by clerkId, fallback email, or real email
     const orConditions = [
       { clerkId },
-      { clerkId: new RegExp(`^${clerkId}$`, 'i') },
       { email: fallbackEmail },
     ];
     if (email) orConditions.push({ email });
