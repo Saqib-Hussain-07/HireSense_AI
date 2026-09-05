@@ -7,9 +7,11 @@ import { MiniNavbar, CanvasRevealEffect } from '../components/ui/sign-in-flow-1.
 const FEATURES = [
   {
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white">
-        <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M13 3v6h6" strokeLinecap="round" strokeLinejoin="round"/>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="w-4 h-4 text-white/90">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeLinecap="round" strokeLinejoin="round"/>
+        <polyline points="14 2 14 8 20 8" strokeLinecap="round" strokeLinejoin="round"/>
+        <line x1="16" y1="13" x2="8" y2="13" strokeLinecap="round" strokeLinejoin="round"/>
+        <line x1="16" y1="17" x2="8" y2="17" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
     title: 'CV & Resume Parser',
@@ -17,8 +19,11 @@ const FEATURES = [
   },
   {
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white">
-        <path d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" strokeLinecap="round" strokeLinejoin="round"/>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="w-4 h-4 text-white/90">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2" strokeLinecap="round" strokeLinejoin="round"/>
+        <line x1="12" y1="19" x2="12" y2="23" strokeLinecap="round" strokeLinejoin="round"/>
+        <line x1="8" y1="23" x2="16" y2="23" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
     title: 'Adaptive Spoken Interviews',
@@ -26,7 +31,7 @@ const FEATURES = [
   },
   {
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="w-4 h-4 text-white/90">
         <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
@@ -35,7 +40,7 @@ const FEATURES = [
   },
   {
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="w-4 h-4 text-white/90">
         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
@@ -44,9 +49,9 @@ const FEATURES = [
   },
   {
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white">
-        <path d="M9 11l3 3L22 4" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" strokeLinecap="round" strokeLinejoin="round"/>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="w-4 h-4 text-white/90">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" strokeLinecap="round" strokeLinejoin="round"/>
+        <polyline points="9 12 11 14 15 10" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
     title: 'Deterministic ATS Scoring',
@@ -54,9 +59,10 @@ const FEATURES = [
   },
   {
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white">
-        <circle cx="11" cy="11" r="8" strokeLinecap="round" strokeLinejoin="round"/>
-        <line x1="21" y1="21" x2="16.65" y2="16.65" strokeLinecap="round" strokeLinejoin="round"/>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="w-4 h-4 text-white/90">
+        <circle cx="12" cy="12" r="10" strokeLinecap="round" strokeLinejoin="round"/>
+        <circle cx="12" cy="12" r="6" strokeLinecap="round" strokeLinejoin="round"/>
+        <circle cx="12" cy="12" r="2" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
     title: 'Dynamic JD Match Engine',
@@ -64,10 +70,10 @@ const FEATURES = [
   },
   {
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white">
-        <circle cx="12" cy="12" r="10" strokeLinecap="round" strokeLinejoin="round"/>
-        <line x1="12" y1="8" x2="12" y2="12" strokeLinecap="round" strokeLinejoin="round"/>
-        <line x1="12" y1="16" x2="12.01" y2="16" strokeLinecap="round" strokeLinejoin="round"/>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="w-4 h-4 text-white/90">
+        <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2" strokeLinecap="round" strokeLinejoin="round"/>
+        <line x1="12" y1="22" x2="12" y2="12" strokeLinecap="round" strokeLinejoin="round"/>
+        <polyline points="2 8.5 12 12 22 8.5" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
     title: 'Visual Skill Radar',
@@ -75,10 +81,11 @@ const FEATURES = [
   },
   {
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="w-4 h-4 text-white/90">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeLinecap="round" strokeLinejoin="round"/>
-        <polyline points="14,2 14,8 20,8" strokeLinecap="round" strokeLinejoin="round"/>
-        <line x1="16" y1="13" x2="8" y2="13" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M9 15h6" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M9 11h6" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M9 7h2" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
     title: 'Evidence-Based Reports',
@@ -269,29 +276,41 @@ export default function LandingPage() {
       </section>
 
       {/* Features Grid */}
-      <section id="features" className="relative z-10 px-6 md:px-12 py-24 scroll-mt-24">
-        <div className="max-w-5xl mx-auto space-y-16">
-          <div className="text-center space-y-3">
-            <p className="text-xs font-mono text-white/50 uppercase tracking-widest">Capabilities</p>
-            <h2 className="font-display font-bold text-3xl sm:text-4xl tracking-tight">A complete, intelligent coaching platform.</h2>
+      <section id="features" className="relative z-10 px-4 sm:px-6 lg:px-8 py-16 sm:py-20 scroll-mt-20">
+        <div className="max-w-6xl mx-auto space-y-8 sm:space-y-10">
+          <div className="text-center space-y-2">
+            <p className="text-[11px] font-mono text-white/40 uppercase tracking-widest">Capabilities</p>
+            <h2 className="font-display font-bold text-2xl sm:text-3xl lg:text-4xl tracking-tight text-white">
+              A complete, intelligent coaching platform.
+            </h2>
+            <p className="text-xs sm:text-sm text-white/50 max-w-xl mx-auto font-body">
+              Everything you need to master your technical and behavioral interviews end-to-end.
+            </p>
           </div>
 
           <motion.div 
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="grid grid-cols-1 md:grid-cols-2 gap-6"
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
           >
-            {FEATURES.map((f, i) => (
-              <div key={f.title} className="group bg-[#0a0a0a]/60 border border-white/5 hover:border-white/20 hover:bg-white/[0.02] hover:shadow-[0_0_40px_rgba(255,255,255,0.02)] transition-all duration-500 rounded-2xl p-7 space-y-5 relative overflow-hidden">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.02)_0%,transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-                <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center relative z-10">
-                  {f.icon}
-                </div>
-                <div className="space-y-2 relative z-10">
-                  <h3 className="font-display font-semibold text-white text-lg">{f.title}</h3>
-                  <p className="text-sm text-white/50 leading-relaxed font-body">{f.desc}</p>
+            {FEATURES.map((f) => (
+              <div 
+                key={f.title} 
+                className="group bg-[#0c0d12]/80 hover:bg-[#14161f]/90 border border-white/[0.08] hover:border-white/20 transition-all duration-300 rounded-xl p-4 sm:p-4.5 flex flex-col justify-between relative overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-0.5"
+              >
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03)_0%,transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                <div>
+                  <div className="w-8 h-8 rounded-lg bg-white/[0.05] border border-white/10 flex items-center justify-center text-white/80 group-hover:text-white group-hover:border-white/25 transition-colors mb-3">
+                    {f.icon}
+                  </div>
+                  <h3 className="font-display font-semibold text-white text-sm tracking-tight mb-1.5">
+                    {f.title}
+                  </h3>
+                  <p className="text-xs text-white/50 leading-relaxed font-body">
+                    {f.desc}
+                  </p>
                 </div>
               </div>
             ))}
