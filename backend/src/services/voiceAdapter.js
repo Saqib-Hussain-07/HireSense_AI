@@ -12,8 +12,6 @@
  *   eleven_turbo_v2    — slightly higher quality
  */
 
-const fetch = require('node-fetch');
-
 const TTS_MODEL_PRIORITY = ['eleven_turbo_v2_5', 'eleven_turbo_v2'];
 
 async function textToSpeech(text) {

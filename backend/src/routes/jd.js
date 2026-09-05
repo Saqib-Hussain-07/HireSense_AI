@@ -1,5 +1,4 @@
 const express = require('express');
-const fetch = require('node-fetch');
 const cheerio = require('cheerio');
 const multer = require('multer');
 const pdfParse = require('pdf-parse');

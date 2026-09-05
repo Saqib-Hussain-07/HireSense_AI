@@ -15,8 +15,6 @@
  *   const json = await callAI({ system: '...', prompt: '...', jsonOnly: true });
  */
 
-const fetch = require('node-fetch');
-
 const PRIMARY_TIMEOUT_MS = 25000;
 
 // Gemini model priority list:

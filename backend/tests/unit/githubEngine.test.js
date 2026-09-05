@@ -1,7 +1,5 @@
-jest.mock('node-fetch');
 jest.mock('../../src/services/aiAdapter');
 
-const fetch = require('node-fetch');
 const { callAI } = require('../../src/services/aiAdapter');
 const { analyzeGithubRepo } = require('../../src/services/githubEngine');
 
@@ -10,8 +8,19 @@ function jsonResponse(body, ok = true, status = 200) {
 }
 
 describe('analyzeGithubRepo', () => {
+  let originalFetch;
+
+  beforeAll(() => {
+    originalFetch = global.fetch;
+    global.fetch = jest.fn();
+  });
+
+  afterAll(() => {
+    global.fetch = originalFetch;
+  });
+
   beforeEach(() => {
-    fetch.mockReset();
+    global.fetch.mockReset();
     callAI.mockReset();
   });
 

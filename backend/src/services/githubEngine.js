@@ -8,7 +8,6 @@
  * spoken interview questions.
  */
 
-const fetch = require('node-fetch');
 const { callAI } = require('./aiAdapter');
 const { githubQuestionsPrompt } = require('../utils/prompts');
 

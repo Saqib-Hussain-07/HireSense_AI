@@ -1,20 +1,26 @@
-jest.mock('node-fetch');
-const fetch = require('node-fetch');
 const { callAI } = require('../../src/services/aiAdapter');
 
 describe('aiAdapter.callAI', () => {
   const OLD_ENV = process.env;
+  let originalFetch;
+
+  beforeAll(() => {
+    originalFetch = global.fetch;
+    global.fetch = jest.fn();
+  });
+
+  afterAll(() => {
+    global.fetch = originalFetch;
+    process.env = OLD_ENV;
+  });
 
   beforeEach(() => {
+    global.fetch.mockReset();
     process.env = {
       ...OLD_ENV,
       GEMINI_API_KEY: 'fake-gemini-key',
       GROQ_API_KEY: 'fake-groq-key',
     };
-  });
-
-  afterAll(() => {
-    process.env = OLD_ENV;
   });
 
   function geminiResponse(text) {
