@@ -57,7 +57,6 @@ router.post('/upload', upload.single('resume'), async (req, res) => {
 
     // ── AI parsing + scoped bullet review (LLM evaluates language quality & extracts structure) ──
     let parsed = { skills: [], education: [], experience: [], projects: [], certifications: [] };
-    let bulletQuality = 75;
     let missingKeywords = [];
     let weakBullets = [];
 
@@ -69,7 +68,6 @@ router.post('/upload', upload.single('resume'), async (req, res) => {
           temperature: 0.2,
         });
         parsed = result.data.parsed || parsed;
-        bulletQuality = Number(result.data.bulletQuality) || 75;
         missingKeywords = result.data.missingKeywords || [];
         weakBullets = result.data.weakBullets || [];
       } catch (aiErr) {
@@ -79,12 +77,12 @@ router.post('/upload', upload.single('resume'), async (req, res) => {
     }
 
     // ── Multi-Component Deterministic ATS Calculation ──────────────────────────
-    // 35% Keyword/Skill Match + 20% Formatting + 20% Quantified Impact + 15% Completeness + 10% Bullet Quality
+    // 35% Keyword/Skill Match + 20% Formatting + 20% Quantified Impact + 15% Completeness + 10% Bullet Quality (ratio calculated in code)
     const atsResult = computeAtsScore({
       rawText,
       parsed,
       targetRole: user?.targetRole,
-      bulletQualityScore: bulletQuality,
+      weakBullets,
       fileSizeBytes: buffer.length,
       mimeType: mimetype || 'application/pdf',
     });

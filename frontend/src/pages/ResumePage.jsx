@@ -156,12 +156,13 @@ export default function ResumePage() {
 
             {latest.weakBullets?.length > 0 && (
               <div>
-                <p className="text-xs text-muted font-mono mb-2 uppercase">Suggested rewrites</p>
+                <p className="text-xs text-muted font-mono mb-2 uppercase">Suggested rewrites & bullet notes</p>
                 <div className="space-y-3">
                   {latest.weakBullets.map((b, i) => (
-                    <div key={i} className="text-sm">
-                      <p className="text-faint line-through">{b.original}</p>
-                      <p className="text-signal">{b.suggested}</p>
+                    <div key={i} className="text-sm bg-panel2/40 border border-hairline/60 rounded-xl p-3 space-y-1.5">
+                      <p className="text-faint line-through text-xs">{b.original}</p>
+                      <p className="text-signal font-medium">{b.suggested}</p>
+                      {b.note && <p className="text-xs text-muted font-sans italic opacity-85">{b.note}</p>}
                     </div>
                   ))}
                 </div>

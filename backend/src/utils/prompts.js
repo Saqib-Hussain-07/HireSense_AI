@@ -5,10 +5,16 @@
 
 function resumeAnalyzePrompt(rawText, targetRole) {
   return {
-    system: 'You are an advanced resume parser and executive bullet-writing evaluator. Return JSON only, no conversational text.',
-    prompt: `Resume raw text:\n"""${rawText}"""\n\nTarget role: ${targetRole || 'general'}\n\nPerform a structured extraction and qualitative bullet review.
-Evaluate "bulletQuality" (integer 1-100) based strictly on action-verb strength, clarity, and avoidance of passive fluff.
-Identify 2-4 "weakBullets" that lack impact or metrics and provide high-impact suggested rewrites.
+    system: 'You are an expert resume parser and bullet editor. Return JSON only, no conversational text.',
+    prompt: `Resume raw text:
+"""${rawText}"""
+
+Target role: ${targetRole || 'general'}
+
+Extract the structured resume data and identify 2-4 weak bullet points needing phrasing improvements (e.g., passive phrasing, vague responsibilities, lack of measurable outcomes).
+Provide a high-impact suggested rewrite and a concise critique note for each.
+Do NOT calculate or invent an overall ATS score or numeric bullet score — all scoring is computed deterministically in code.
+
 Return JSON matching this exact schema:
 {
   "parsed": {
@@ -18,10 +24,12 @@ Return JSON matching this exact schema:
     "projects": [{"name": "project name", "description": "project description"}],
     "certifications": ["certification name"]
   },
-  "bulletQuality": 80, // Integer 1-100 evaluating action verbs and conciseness
-  "missingKeywords": ["keyword1", "keyword2"],
   "weakBullets": [
-    { "original": "original bullet point", "suggested": "optimized bullet point with strong action verbs and quantified impact" }
+    {
+      "original": "exact weak bullet text from resume",
+      "suggested": "optimized bullet point with strong action verb and quantified outcome",
+      "note": "specific phrasing critique explaining why this bullet was weak"
+    }
   ]
 }`,
   };

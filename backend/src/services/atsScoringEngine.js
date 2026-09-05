@@ -184,6 +184,16 @@ function computeFormattingParseability(rawText = '', fileSizeBytes = 0, mimeType
 }
 
 /**
+ * Fast, zero-AI deterministic quantified impact ratio:
+ * Filters bullets that contain numbers (\d), percentages (%), or currency signs ($).
+ */
+function quantifiedImpactScore(bullets = []) {
+  if (!Array.isArray(bullets) || !bullets.length) return 0;
+  const withNumbers = bullets.filter((b) => /\d/.test(b) || /%/.test(b) || /\$/.test(b));
+  return withNumbers.length / bullets.length;
+}
+
+/**
  * 3. Quantified Impact (20% weight)
  * Uses deterministic regexes to verify numbers, percentages, multipliers, and scaled results.
  */
@@ -215,33 +225,16 @@ function computeQuantifiedImpact(rawText = '', parsedExperience = [], parsedProj
     }
   }
 
-  const metricPatterns = [
-    /\b\d+(?:\.\d+)?%/g, // Percentages (e.g. 25%, 99.9%)
-    /\b\d+(?:\.\d+)?x\b/gi, // Multipliers (e.g. 10x, 3x)
-    /(?:\$|€|£|₹)\s?\d+(?:,\d{3})*(?:\.\d+)?[kKmMbB]?\b/g, // Dollar / Revenue
-    /\b\d+(?:,\d{3})*\+?\s*(?:users|customers|queries|requests|qps|rps|tps|ms|seconds|minutes|hours|days|engineers|developers|clients|downloads|stars|nodes|servers|endpoints|gb|tb|mb)\b/gi,
-    /\b(?:increased|decreased|reduced|grew|scaled|saved|improved|boosted|accelerated|cut|delivered)\b[^.!?\n]*?\b\d+/gi,
-  ];
-
-  function containsMetric(text) {
-    return metricPatterns.some((pattern) => {
-      pattern.lastIndex = 0;
-      return pattern.test(text);
-    });
-  }
-
-  let totalBullets = bullets.length;
+  const totalBullets = bullets.length;
+  let ratio = 0;
   let metricBulletsCount = 0;
-
-  for (const bullet of bullets) {
-    if (containsMetric(bullet)) {
-      metricBulletsCount++;
-    }
-  }
-
   let score = 10;
+
   if (totalBullets > 0) {
-    const ratio = metricBulletsCount / totalBullets;
+    ratio = quantifiedImpactScore(bullets);
+    const withNumbers = bullets.filter((b) => /\d/.test(b) || /%/.test(b) || /\$/.test(b));
+    metricBulletsCount = withNumbers.length;
+
     if (ratio >= 0.35) score = 100;
     else if (ratio >= 0.25) score = 85;
     else if (ratio >= 0.15) score = 70;
@@ -249,21 +242,18 @@ function computeQuantifiedImpact(rawText = '', parsedExperience = [], parsedProj
     else if (metricBulletsCount >= 1) score = 35;
     else score = 15;
   } else {
-    // Fallback: scan full raw text for total metric occurrences
-    let globalMetricMatches = 0;
-    for (const pattern of metricPatterns) {
-      pattern.lastIndex = 0;
-      const matches = rawText.match(pattern);
-      if (matches) globalMetricMatches += matches.length;
-    }
-    if (globalMetricMatches >= 5) score = 85;
-    else if (globalMetricMatches >= 3) score = 70;
-    else if (globalMetricMatches >= 1) score = 40;
+    // Fallback: scan raw text for total metric occurrences
+    const matches = rawText.match(/\b\d+(?:\.\d+)?%?|\$|€|£|₹/g) || [];
+    const count = matches.length;
+    if (count >= 5) score = 85;
+    else if (count >= 3) score = 70;
+    else if (count >= 1) score = 40;
     else score = 10;
   }
 
   return {
     score,
+    ratio: parseFloat(ratio.toFixed(2)),
     totalBullets,
     metricBulletsCount,
   };
@@ -323,18 +313,35 @@ function computeSectionCompleteness(rawText = '', parsed = {}) {
 }
 
 /**
+ * 5. Bullet & Phrasing Quality (10% weight)
+ * Evaluates the proportion of strong vs weak bullets.
+ * The LLM only identifies the weak bullets needing rewrites (qualitative judgment).
+ * Code deterministically computes the score from the ratio of strong bullets.
+ */
+function computeBulletQuality(bullets = [], weakBullets = []) {
+  const total = Array.isArray(bullets) ? bullets.length : 0;
+  const weak = Array.isArray(weakBullets) ? weakBullets.length : 0;
+  if (total === 0) return 75; // Neutral baseline when no bullet points found
+  const strongCount = Math.max(0, total - weak);
+  const ratio = strongCount / total;
+  // 100% strong -> 95-100; 75% strong -> ~85; 50% strong -> ~70; 25% strong -> ~55
+  return Math.max(20, Math.min(100, Math.round(40 + ratio * 60)));
+}
+
+/**
  * Computes composite ATS Score:
  *   35%  Keyword/Skill Match      (deterministic)
  *   20%  Parseability/Formatting  (deterministic)
  *   20%  Quantified Impact        (deterministic)
  *   15%  Section Completeness     (deterministic)
- *   10%  Bullet/Language Quality  (LLM evaluation)
+ *   10%  Bullet/Language Quality  (code calculates ratio; LLM identifies weak bullets)
  */
 function computeAtsScore({
   rawText = '',
   parsed = {},
   targetRole = 'general',
-  bulletQualityScore = 75,
+  bulletQualityScore,
+  weakBullets = [],
   fileSizeBytes = 0,
   mimeType = 'application/pdf',
 }) {
@@ -343,8 +350,24 @@ function computeAtsScore({
   const impact = computeQuantifiedImpact(rawText, parsed?.experience, parsed?.projects);
   const completeness = computeSectionCompleteness(rawText, parsed);
 
-  // Bullet Quality (LLM): clamp between 10 and 100
-  const bulletQuality = Math.max(10, Math.min(100, Math.round(Number(bulletQualityScore) || 75)));
+  // Derive bullet quality deterministically if not explicitly provided
+  let bulletQuality;
+  if (typeof bulletQualityScore === 'number' && !isNaN(bulletQualityScore)) {
+    bulletQuality = Math.max(10, Math.min(100, Math.round(bulletQualityScore)));
+  } else {
+    const allBullets = [];
+    if (Array.isArray(parsed?.experience)) {
+      for (const exp of parsed.experience) {
+        if (Array.isArray(exp.highlights)) allBullets.push(...exp.highlights);
+      }
+    }
+    if (Array.isArray(parsed?.projects)) {
+      for (const proj of parsed.projects) {
+        if (proj.description) allBullets.push(proj.description);
+      }
+    }
+    bulletQuality = computeBulletQuality(allBullets, weakBullets);
+  }
 
   const weightedTotal =
     keywordMatch.score * 0.35 +
@@ -401,9 +424,11 @@ function computeAtsScore({
 }
 
 module.exports = {
+  quantifiedImpactScore,
   computeKeywordSkillMatch,
   computeFormattingParseability,
   computeQuantifiedImpact,
   computeSectionCompleteness,
+  computeBulletQuality,
   computeAtsScore,
 };

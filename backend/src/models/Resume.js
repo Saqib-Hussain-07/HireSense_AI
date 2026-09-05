@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const WeakBulletSchema = new mongoose.Schema(
-  { original: String, suggested: String },
+  { original: String, suggested: String, note: String },
   { _id: false }
 );
 

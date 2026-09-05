@@ -1,8 +1,10 @@
 const {
+  quantifiedImpactScore,
   computeKeywordSkillMatch,
   computeFormattingParseability,
   computeQuantifiedImpact,
   computeSectionCompleteness,
+  computeBulletQuality,
   computeAtsScore,
 } = require('../../src/services/atsScoringEngine');
 
@@ -117,9 +119,56 @@ describe('atsScoringEngine', () => {
         },
       ];
       const result = computeQuantifiedImpact('', parsedExperience, []);
-
       expect(result.metricBulletsCount).toBe(0);
       expect(result.score).toBeLessThanOrEqual(20);
+    });
+
+    test('quantifiedImpactScore calculates exact ratio of bullets with numbers, % or $', () => {
+      const bullets = [
+        'Reduced p99 latency by 35% across cluster',
+        'Saved $1.2M in annual cloud costs',
+        'Managed team of 6 engineers',
+        'Responsible for documentation and bug fixes',
+      ];
+      // 3 out of 4 contain \d, %, or $
+      expect(quantifiedImpactScore(bullets)).toBe(0.75);
+      expect(quantifiedImpactScore([])).toBe(0);
+      expect(quantifiedImpactScore(['No numbers here at all'])).toBe(0);
+    });
+  });
+
+  describe('computeBulletQuality (10% weight)', () => {
+    test('rewards high ratio of strong to weak bullets and penalizes high weak bullet counts', () => {
+      const allBullets = [
+        'Architected real-time messaging pipeline handling 100k events/sec',
+        'Scaled Postgres cluster with zero downtime',
+        'Built automated CI/CD pipelines in GitHub Actions',
+        'Mentored 3 junior software engineers',
+      ];
+      const weakBullets = [
+        {
+          original: 'Mentored 3 junior software engineers',
+          suggested: 'Mentored and coached 3 junior engineers, accelerating time-to-first-commit by 40%',
+          note: 'Lacks measurable outcome for mentorship',
+        },
+      ];
+
+      // 3 of 4 bullets strong -> ratio 0.75 -> score ~85
+      const score = computeBulletQuality(allBullets, weakBullets);
+      expect(score).toBeGreaterThanOrEqual(80);
+
+      // All bullets weak -> 0 strong -> score 40
+      const lowScore = computeBulletQuality(allBullets, [
+        { original: 'b1' },
+        { original: 'b2' },
+        { original: 'b3' },
+        { original: 'b4' },
+      ]);
+      expect(lowScore).toBeLessThanOrEqual(50);
+
+      // No weak bullets -> 100
+      const perfectScore = computeBulletQuality(allBullets, []);
+      expect(perfectScore).toBe(100);
     });
   });
 
@@ -209,6 +258,56 @@ describe('atsScoringEngine', () => {
         result.breakdown.bulletQuality.score * 0.10
       );
       expect(result.atsScore).toBe(expectedTotal);
+    });
+
+    test('derives bulletQuality deterministically in code when weakBullets are provided', () => {
+      const rawText = `
+        Alex Smith
+        alex@example.com | 555-222-3333 | linkedin.com/in/alex
+        Experience:
+        Software Engineer
+        - Architected streaming pipeline in Go handling 1M messages per second.
+        - Optimized queries reducing latency by 45%.
+        - Assisted with feature deployments.
+        Education: BS Software Engineering
+        Skills: Go, Python, Docker, Kubernetes, AWS, Postgres, Redis, Git, Linux, CI/CD
+        Projects: Real-time dashboard
+        ${'engineered scalable microservices '.repeat(100)}
+      `;
+      const parsed = {
+        skills: ['Go', 'Python', 'Docker', 'Kubernetes', 'AWS', 'Postgres', 'Redis', 'Git', 'Linux'],
+        experience: [
+          {
+            highlights: [
+              'Architected streaming pipeline in Go handling 1M messages per second.',
+              'Optimized queries reducing latency by 45%.',
+              'Assisted with feature deployments.',
+            ],
+          },
+        ],
+        education: [{ degree: 'BS' }],
+        projects: [{ name: 'Real-time dashboard' }],
+      };
+      const weakBullets = [
+        {
+          original: 'Assisted with feature deployments.',
+          suggested: 'Automated feature deployments using ArgoCD, reducing release cycle time by 60%.',
+          note: 'Lacks action verb and impact metric.',
+        },
+      ];
+
+      // No bulletQualityScore passed — derived strictly from 2 strong / 1 weak bullets
+      const result = computeAtsScore({
+        rawText,
+        parsed,
+        targetRole: 'Backend Engineer',
+        weakBullets,
+      });
+
+      // 2 strong out of 3 total -> ratio 0.67 -> bulletQuality score ~80
+      expect(result.breakdown.bulletQuality.score).toBeGreaterThanOrEqual(75);
+      expect(result.breakdown.bulletQuality.weight).toBe('10%');
+      expect(result.atsScore).toBeGreaterThanOrEqual(75);
     });
   });
 });
