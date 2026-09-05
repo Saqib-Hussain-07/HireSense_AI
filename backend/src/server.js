@@ -22,7 +22,8 @@ const packsRoutes = require('./routes/packs');
 
 const app = express();
 
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || '*' }));
+const DEFAULT_ORIGIN = process.env.NODE_ENV === 'production' ? false : 'http://localhost:5173';
+app.use(cors({ origin: process.env.CLIENT_ORIGIN || DEFAULT_ORIGIN }));
 app.use(express.json({ limit: '10mb' }));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));

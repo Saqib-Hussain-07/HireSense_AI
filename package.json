@@ -18,7 +18,12 @@
     "install:all": "npm install",
     "check:apis": "node backend/scripts/checkApis.js",
     "seed": "npm run seed --workspace=backend",
-    "lint": "echo \"No lint config yet — add eslint to add linting.\""
+    "lint": "echo \"No lint config yet — add eslint to add linting.\"",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:dev": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build",
+    "docker:logs": "docker compose logs -f",
+    "docker:build": "docker compose build"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

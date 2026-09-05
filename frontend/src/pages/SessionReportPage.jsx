@@ -196,7 +196,7 @@ function QuestionCard({ q, index, totalAnswered }) {
         <div className="flex items-center gap-2 shrink-0">
           {hasScore && (
             <>
-              <span className="font-display font-bold text-lg" style={{ color }}>{q.finalScore}%</span>
+              <span className="font-display font-bold text-lg" style={{ color }}>{q.finalScore}</span>
               <ScoreBadge score={q.finalScore} />
             </>
           )}
@@ -368,7 +368,7 @@ export default function SessionReportPage() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const { data: session, isLoading } = useQuery({
+  const { data: session, isLoading, isError } = useQuery({
     queryKey: ['session', id],
     queryFn: () => api.getInterview(id),
   });
@@ -379,6 +379,19 @@ export default function SessionReportPage() {
         <div className="text-center space-y-3">
           <div className="w-8 h-8 border-2 border-onair border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-muted text-sm">Loading report…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-3">
+          <p className="text-alert font-semibold">Failed to load report</p>
+          <p className="text-muted text-sm">The session may not exist or you may not have access.</p>
+          <button onClick={() => navigate('/history')}
+            className="mt-2 text-xs text-signal underline">← Back to History</button>
         </div>
       </div>
     );

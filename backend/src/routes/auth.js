@@ -1,11 +1,67 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const { OAuth2Client } = require('google-auth-library');
+const jwt = require('jsonwebtoken');
+// jwks-rsa is lazy-required inside the /clerk-session handler to keep Jest happy
+// (some versions of this package use ESM internally which breaks Jest's CJS resolver)
 const User = require('../models/User');
 const { signToken } = require('../middleware/auth');
 
 const router = express.Router();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+// POST /api/auth/clerk-session
+// Called by the frontend after Clerk signs in. Accepts a Clerk session JWT,
+// verifies it against Clerk's JWKS, upserts a local User, and returns our own
+// local JWT so the rest of the API (and the WS gateway) work normally.
+router.post('/clerk-session', async (req, res) => {
+  try {
+    const { sessionToken } = req.body;
+    if (!sessionToken) return res.status(400).json({ error: 'sessionToken is required' });
+
+    const clerkIssuer = process.env.CLERK_ISSUER; // e.g. https://decisive-ram-45.clerk.accounts.dev
+    if (!clerkIssuer) return res.status(500).json({ error: 'CLERK_ISSUER not configured' });
+
+    // Verify the Clerk JWT against Clerk's public JWKS
+    // eslint-disable-next-line global-require
+    const jwksRsa = require('jwks-rsa');
+    const client = jwksRsa({ jwksUri: `${clerkIssuer}/.well-known/jwks.json`, cache: true, rateLimit: true });
+
+    const getKey = (header, callback) => {
+      client.getSigningKey(header.kid, (err, key) => {
+        if (err) return callback(err);
+        callback(null, key.getPublicKey());
+      });
+    };
+
+    const payload = await new Promise((resolve, reject) => {
+      jwt.verify(sessionToken, getKey, { issuer: clerkIssuer, algorithms: ['RS256'] }, (err, decoded) => {
+        if (err) reject(err);
+        else resolve(decoded);
+      });
+    });
+
+    const clerkId = payload.sub;
+    const email = (payload.email || '').toLowerCase();
+    const name = payload.name || payload.email || 'User';
+
+    // Upsert — find by clerkId first, then fall back to email for existing accounts
+    let user = await User.findOne({ clerkId });
+    if (!user && email) user = await User.findOne({ email });
+    if (!user) {
+      user = await User.create({ clerkId, name, email: email || `${clerkId}@clerk.local` });
+    } else if (!user.clerkId) {
+      user.clerkId = clerkId;
+      await user.save();
+    }
+
+    const token = signToken(user._id);
+    res.json({ token, user: sanitize(user) });
+  } catch (err) {
+    console.error('[auth/clerk-session] failed:', err.message);
+    res.status(401).json({ error: 'Clerk session verification failed', detail: err.message });
+  }
+});
 
 router.post('/signup', async (req, res) => {
   try {

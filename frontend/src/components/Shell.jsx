@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { UserButton } from '@clerk/react';
 import { CanvasRevealEffect } from './ui/sign-in-flow-1.jsx';
 
 /* ── Icons ─────────────────────────────────────────────────────────────── */
@@ -232,7 +233,11 @@ export default function Shell({ children }) {
           </nav>
 
           {/* Bottom controls */}
-          <div className="px-2 pb-4 pt-3 space-y-1 border-t border-white/5">
+          <div className="px-2 pb-4 pt-3 space-y-2 border-t border-white/5">
+            <div className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-white/[0.02] border border-white/5">
+              <UserButton afterSignOutUrl="/" showName={expanded} />
+            </div>
+
             {/* Logout */}
             <button
               onClick={() => { logout(); navigate('/'); }}

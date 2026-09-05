@@ -6,12 +6,42 @@
 
 ---
 
-## Quick Start (Local Dev)
+## Quick Start
+
+### Option A — Docker Compose (Zero Dependency Setup)
+
+The fastest way to spin up the entire stack including **MongoDB**, **Backend API**, and **Frontend App**:
 
 ```bash
-# 1. Clone and install everything
+# 1. Clone the repository
 git clone <repo-url> hiresense-ai
 cd hiresense-ai
+
+# 2. Setup Docker environment variables
+cp .env.docker.example .env
+# Edit .env with your AI API keys (GEMINI_API_KEY, GROQ_API_KEY, etc.)
+
+# 3. Start the entire container stack
+docker compose up -d --build
+# Or via npm script: npm run docker:up
+
+# → Frontend (Web): http://localhost:3000
+# → Backend (API):  http://localhost:5000/api/health
+# → Database:       mongodb://localhost:27017
+```
+
+For hot-reload local development with Docker:
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+# Or: npm run docker:dev
+```
+
+---
+
+### Option B — Local Node.js Development
+
+```bash
+# 1. Install all dependencies (root + workspaces)
 npm install
 
 # 2. Configure secrets
@@ -27,7 +57,7 @@ npm run dev
 npm run check:apis
 ```
 
-> See [DEPLOYMENT.md](DEPLOYMENT.md) for Render, Railway, and Vercel guides.
+> See [DEPLOYMENT.md](DEPLOYMENT.md) for Docker, Render, Railway, and Vercel guides.
 
 ---
 

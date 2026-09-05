@@ -73,7 +73,7 @@ async function scoreAnswer({ question, answerTranscript, targetRole, company, mo
       starCheck: null,
       sentiment: 'neutral',
       engagement: 0,
-      confidenceScore: 100,
+      confidenceScore: 0,
       jargonHighlights: [],
       deliveryMeta: { fillerCount: 0, wpm: 0, wordCount: 0 }
     };
@@ -82,7 +82,7 @@ async function scoreAnswer({ question, answerTranscript, targetRole, company, mo
   const delivery = computeDeliveryScore(answerTranscript, durationSeconds);
 
   const { data } = await callAI({
-    ...rubricScoringPrompt({ question, answerTranscript, targetRole, company, mode, persona }),
+    ...rubricScoringPrompt({ question, answerTranscript, targetRole, company, mode, persona, sessionType }),
     jsonOnly: true,
   });
 

@@ -43,7 +43,11 @@ async function withTimeout(promise, ms) {
 
 function isGeminiKeyValid(key) {
   // Google AI Studio keys can start with "AIza" (legacy) or "AQ." (newer format)
-  return key && (key.startsWith('AIza') || key.startsWith('AQ.') || key.includes('fake') || key.includes('mock'));
+  if (!key) return false;
+  if (key.startsWith('AIza') || key.startsWith('AQ.')) return true;
+  // Test-only escape hatch: allow mock/fake keys in non-production environments
+  if (process.env.NODE_ENV !== 'production' && (key.includes('fake') || key.includes('mock'))) return true;
+  return false;
 }
 
 async function callGeminiModel(key, model, system, prompt) {
@@ -163,13 +167,28 @@ async function callAI({ system = '', prompt, jsonOnly = false }) {
 
   if (!jsonOnly) return { text: rawText, provider: usedProvider };
 
-  const cleaned = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-  try {
-    return { data: JSON.parse(cleaned), provider: usedProvider };
-  } catch (e) {
-    console.error('[aiAdapter] JSON parse failed, raw output:', cleaned.slice(0, 500));
-    throw new Error('AI_MALFORMED_JSON');
+  // Primary: strip markdown code fences
+  let cleaned = rawText.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+
+  // Secondary: if the cleaned text isn't valid JSON, try extracting the outermost { } block.
+  // This handles models that wrap JSON in prose or add trailing explanations.
+  function tryParse(str) {
+    try { return JSON.parse(str); } catch { return null; }
   }
+
+  let parsed = tryParse(cleaned);
+  if (!parsed) {
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace  = cleaned.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      parsed = tryParse(cleaned.slice(firstBrace, lastBrace + 1));
+    }
+  }
+
+  if (parsed) return { data: parsed, provider: usedProvider };
+
+  console.error('[aiAdapter] JSON parse failed, raw output:', cleaned.slice(0, 500));
+  throw new Error('AI_MALFORMED_JSON');
 }
 
 module.exports = { callAI };

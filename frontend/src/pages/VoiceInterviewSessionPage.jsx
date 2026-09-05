@@ -284,6 +284,9 @@ export default function VoiceInterviewSessionPage() {
 
     pushUserFinal(textToSend);
 
+    // BUG-17: reset the mic buffer so old text doesn't bleed into the next voice answer
+    latestAnswerRef.current = '';
+
     if (listening) {
       stopListening();
     }
@@ -306,7 +309,16 @@ export default function VoiceInterviewSessionPage() {
   }
 
   async function handleFinish() {
-    await api.finishInterview(id);
+    // Guard against double-call: the session_complete event + the button both invoke this.
+    // If the session was already marked completed by a prior call, just navigate.
+    try {
+      await api.finishInterview(id);
+    } catch (err) {
+      // 409 / already finished is fine — navigate anyway
+      if (!err.message?.includes('already')) {
+        console.error('[handleFinish] error:', err.message);
+      }
+    }
     navigate(`/interview/${id}/report`);
   }
 
@@ -337,7 +349,8 @@ export default function VoiceInterviewSessionPage() {
     );
   }
 
-  const currentAIText = transcript.findLast?.(m => m.role === 'ai')?.text || '';
+  // BUG-19: findLast is ES2023 and not supported in Safari < 16; use a compat version
+  const currentAIText = [...transcript].reverse().find(m => m.role === 'ai')?.text || '';
 
   return (
     <div className="h-screen flex flex-col bg-ink overflow-hidden">
@@ -355,23 +368,25 @@ export default function VoiceInterviewSessionPage() {
           </button>
         </div>
 
-        {/* Progress */}
+        {/* Progress — only rendered once the real question count is known */}
         <div className="flex items-center gap-3">
-          <div className="flex gap-1.5">
-            {Array.from({ length: totalQuestions || 5 }).map((_, i) => (
-              <span
-                key={i}
-                className="w-2 h-2 rounded-full transition-all duration-300"
-                style={{
-                  background: i < questionIndex
-                    ? '#5FB8A8'
-                    : i === questionIndex
-                    ? '#E8A94B'
-                    : 'var(--color-hairline)',
-                }}
-              />
-            ))}
-          </div>
+          {totalQuestions && (
+            <div className="flex gap-1.5">
+              {Array.from({ length: totalQuestions }).map((_, i) => (
+                <span
+                  key={i}
+                  className="w-2 h-2 rounded-full transition-all duration-300"
+                  style={{
+                    background: i < questionIndex
+                      ? '#5FB8A8'
+                      : i === questionIndex
+                      ? '#E8A94B'
+                      : 'var(--color-hairline)',
+                  }}
+                />
+              ))}
+            </div>
+          )}
           <span className="text-xs font-mono text-faint">
             {questionIndex + 1}{totalQuestions ? ` / ${totalQuestions}` : ''}
           </span>

@@ -60,8 +60,9 @@ function interviewGeneratePrompt({ resumeParsed, jdParsed, type, difficulty, per
 }
 
 // Section 9.1
-function rubricScoringPrompt({ question, answerTranscript, targetRole, company, mode, persona }) {
+function rubricScoringPrompt({ question, answerTranscript, targetRole, company, mode, persona, sessionType }) {
   const personaPrefix = persona ? `${personaSystemPrompt(persona)}\n\n` : '';
+  const isBehavioral = sessionType === 'behavioral';
   return {
     system: `${personaPrefix}You are scoring one interview answer against a fixed rubric. Return JSON only, no preamble.`,
     prompt: `You are scoring one interview answer. Every category in the "scores" object MUST be graded strictly on a scale of 0 to 10:
@@ -69,8 +70,7 @@ function rubricScoringPrompt({ question, answerTranscript, targetRole, company, 
 - Structure (0-10): Narrative coherence and organization.
 - TechnicalAccuracy (0-10): Correctness of technical concepts mentioned.
 - BusinessThinking (0-10): Strategic/commercial awareness.
-- STAR (0-10): STAR method structure compliance (Situation, Task, Action, Result).
-- Creativity (0-10): Innovation or custom tradeoffs discussed.
+${isBehavioral ? '- STAR (0-10): STAR method structure compliance (Situation, Task, Action, Result).\n' : ''}- Creativity (0-10): Innovation or custom tradeoffs discussed.
 
 Evaluate also the candidate's sentiment, engagement level, assessment confidence, and technical jargon opportunities.
 Identify specific words or sentences in the transcript where the candidate used vague or overly simple terminology where they should have used technical terminology, industry-standard jargon, or precise vocabulary—and provide optimal technical replacements in the "jargonHighlights" array.
@@ -90,8 +90,7 @@ Return JSON only:
     "structure": 0,
     "technicalAccuracy": 0,
     "businessThinking": 0,
-    "star": 0,
-    "creativity": 0
+    ${isBehavioral ? '"star": 0,\n    ' : ''}"creativity": 0
   },
   "sentiment": "confident" | "hesitant" | "anxious" | "neutral",
   "engagement": 85, // 0 to 100 representing elaboration length and rate

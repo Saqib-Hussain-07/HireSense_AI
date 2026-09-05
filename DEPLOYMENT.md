@@ -9,26 +9,70 @@ A step-by-step reference for deploying HireSense AI to different environments.
 ```
 HireSense AI/
 ├── .gitignore                 # Root gitignore
-├── .github/workflows/ci.yml  # GitHub Actions CI pipeline
-├── package.json               # npm workspaces root
+├── .dockerignore              # Docker build context exclusions
+├── docker-compose.yml         # Full-stack production orchestration
+├── docker-compose.dev.yml     # Hot-reloading development override
+├── .env.docker.example        # Environment template for Docker
+├── .github/workflows/ci.yml   # GitHub Actions CI pipeline
+├── package.json               # npm workspaces root + Docker scripts
 ├── render.yaml                # Render.com one-click deployment
 │
 ├── backend/
+│   ├── Dockerfile             # Multi-stage Node.js backend container
+│   ├── .dockerignore
 │   ├── .env.example           # Required environment variables
 │   ├── scripts/
 │   │   └── checkApis.js       # Diagnostic tool — verify all API keys
 │   └── src/                   # Application source
 │
 └── frontend/
+    ├── Dockerfile             # Multi-stage Nginx + Vite container
+    ├── nginx.conf             # Nginx SPA & API/WebSocket reverse proxy
+    ├── .dockerignore
     ├── .env.example           # VITE_API_URL for production builds
     └── src/                   # React application source
 ```
 
 ---
 
-## Option 1 — Local Development
+## Option 1 — Docker Compose (Recommended)
 
-> Fastest way to start coding.
+> One-command setup for the full stack: MongoDB + Backend API + Nginx Frontend.
+
+### 1. Production Mode
+```bash
+# Copy and configure environment variables
+cp .env.docker.example .env
+# Edit .env with your API keys (GEMINI_API_KEY, GROQ_API_KEY, etc.)
+
+# Build and start all services in detached mode
+docker compose up -d --build
+
+# View real-time aggregated logs
+docker compose logs -f
+
+# Stop all services
+docker compose down
+```
+
+- **Frontend App**: `http://localhost:3000` (served via Nginx with API/WebSocket proxying)
+- **Backend API**: `http://localhost:5000`
+- **MongoDB**: `mongodb://localhost:27017`
+
+### 2. Development Mode (Live Hot Reloading)
+```bash
+# Start backend (nodemon) and frontend (Vite HMR) with local code mounted
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+
+# Or use npm shortcut:
+npm run docker:dev
+```
+
+---
+
+## Option 2 — Local Node.js Development
+
+> Standard local setup without Docker.
 
 ```bash
 # 1. Clone the repository
@@ -53,7 +97,7 @@ npm run check:apis
 
 ---
 
-## Option 2 — Render.com (Recommended for free-tier hosting)
+## Option 3 — Render.com (Recommended for free-tier hosting)
 
 > One-click deployment via `render.yaml`.
 

@@ -4,6 +4,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { useAuth as useClerkAuth, Show, SignInButton, SignUpButton, UserButton } from "@clerk/react";
 import * as THREE from "three";
 
 // ---------------------------------------------------------------------------
@@ -329,7 +330,8 @@ export function MiniNavbar() {
   const shapeTimeoutRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout: localLogout } = useAuth();
+  const { isSignedIn: clerkSignedIn, signOut: clerkSignOut } = useClerkAuth();
 
   const toggleMenu = () => setIsOpen(!isOpen);
 
@@ -367,7 +369,12 @@ export function MiniNavbar() {
   const loginActive = location.pathname === "/login";
   const signupActive = location.pathname === "/signup";
 
-  const isAuthed = !!(user && localStorage.getItem('hiresense_token'));
+  const isAuthed = !!(user || clerkSignedIn);
+
+  async function logout() {
+    localLogout();
+    if (clerkSignedIn) await clerkSignOut();
+  }
 
   const loginButtonElement = isAuthed ? (
     <button
@@ -445,8 +452,31 @@ export function MiniNavbar() {
         </nav>
 
         <div className="hidden sm:flex items-center gap-2 sm:gap-3">
-          {loginButtonElement}
-          {signupButtonElement}
+          <Show when="signed-out">
+            <SignInButton mode="modal">
+              <button
+                className="relative z-10 px-4 py-2 sm:px-3 text-xs sm:text-sm font-semibold rounded-full border border-[#333] bg-[rgba(31,31,31,0.62)] text-gray-300 hover:border-white/50 hover:text-white transition-all duration-200 cursor-pointer"
+              >
+                Log In
+              </button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <button
+                className="relative z-10 px-4 py-2 sm:px-3 text-xs sm:text-sm font-semibold text-black bg-gradient-to-br from-gray-100 to-gray-300 rounded-full hover:from-gray-200 hover:to-gray-400 transition-all duration-200 cursor-pointer"
+              >
+                Sign Up
+              </button>
+            </SignUpButton>
+          </Show>
+          <Show when="signed-in">
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="px-4 py-2 sm:px-3 text-xs sm:text-sm border border-[#333] bg-[rgba(31,31,31,0.62)] text-gray-300 rounded-full hover:border-white/50 hover:text-white transition-colors duration-200"
+            >
+              Dashboard
+            </button>
+            <UserButton afterSignOutUrl="/" />
+          </Show>
         </div>
 
         <button
@@ -506,9 +536,34 @@ export function MiniNavbar() {
             </a>
           ))}
         </nav>
-        <div className="flex flex-col items-center space-y-4 mt-4 w-full">
-          {loginButtonElement}
-          {signupButtonElement}
+        <div className="flex flex-col items-center space-y-3 mt-4 w-full">
+          <Show when="signed-out">
+            <SignInButton mode="modal">
+              <button
+                className="w-full px-4 py-2 text-sm font-semibold rounded-full border border-[#333] bg-[rgba(31,31,31,0.62)] text-gray-300 hover:border-white/50 hover:text-white transition-all duration-200"
+              >
+                Log In
+              </button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <button
+                className="w-full px-4 py-2 text-sm font-semibold text-black bg-gradient-to-br from-gray-100 to-gray-300 rounded-full hover:from-gray-200 hover:to-gray-400 transition-all duration-200"
+              >
+                Sign Up
+              </button>
+            </SignUpButton>
+          </Show>
+          <Show when="signed-in">
+            <button
+              onClick={() => { navigate("/dashboard"); setIsOpen(false); }}
+              className="w-full px-4 py-2 text-sm border border-[#333] bg-[rgba(31,31,31,0.62)] text-gray-300 rounded-full hover:border-white/50 hover:text-white transition-colors duration-200"
+            >
+              Dashboard
+            </button>
+            <div className="flex justify-center py-1">
+              <UserButton afterSignOutUrl="/" />
+            </div>
+          </Show>
         </div>
       </div>
     </header>

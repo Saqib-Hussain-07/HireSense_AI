@@ -31,6 +31,7 @@ export const api = {
   signup: (body) => request('/auth/signup', { method: 'POST', body }),
   login: (body) => request('/auth/login', { method: 'POST', body }),
   googleAuth: (idToken) => request('/auth/google', { method: 'POST', body: { idToken } }),
+  clerkSession: (sessionToken) => request('/auth/clerk-session', { method: 'POST', body: { sessionToken } }),
 
   getProfile: () => request('/profile'),
   updateProfile: (body) => request('/profile', { method: 'PUT', body }),

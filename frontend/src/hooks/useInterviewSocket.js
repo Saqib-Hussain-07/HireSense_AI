@@ -1,33 +1,63 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { wsUrl } from '../lib/api';
 
+const MAX_RETRIES   = 8;
+const BASE_DELAY_MS = 500; // doubles each attempt, caps at ~30s
+
 export function useInterviewSocket(sessionId, handlers) {
-  const wsRef = useRef(null);
-  const handlersRef = useRef(handlers);
-  handlersRef.current = handlers;
+  const wsRef          = useRef(null);
+  const handlersRef    = useRef(handlers);
+  handlersRef.current  = handlers;
+  const retriesRef     = useRef(0);
+  const retryTimerRef  = useRef(null);
+  const shouldReconnect= useRef(true); // set to false on intentional close
+
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
     if (!sessionId) return;
-    const ws = new WebSocket(wsUrl(sessionId));
-    wsRef.current = ws;
+    shouldReconnect.current = true;
+    retriesRef.current = 0;
 
-    ws.onopen = () => setConnected(true);
-    ws.onclose = () => setConnected(false);
-    ws.onerror = (e) => console.warn('[useInterviewSocket] error', e);
+    function connect() {
+      const ws = new WebSocket(wsUrl(sessionId));
+      wsRef.current = ws;
 
-    ws.onmessage = (event) => {
-      let msg;
-      try {
-        msg = JSON.parse(event.data);
-      } catch {
-        return;
-      }
-      const handler = handlersRef.current?.[msg.type];
-      if (handler) handler(msg);
+      ws.onopen = () => {
+        setConnected(true);
+        retriesRef.current = 0; // reset on successful connection
+      };
+
+      ws.onclose = () => {
+        setConnected(false);
+        if (!shouldReconnect.current) return;
+        if (retriesRef.current >= MAX_RETRIES) {
+          console.error('[useInterviewSocket] max reconnect attempts reached');
+          return;
+        }
+        const delay = Math.min(BASE_DELAY_MS * 2 ** retriesRef.current, 30000);
+        retriesRef.current += 1;
+        console.warn(`[useInterviewSocket] disconnected, retrying in ${delay}ms (attempt ${retriesRef.current})`);
+        retryTimerRef.current = setTimeout(connect, delay);
+      };
+
+      ws.onerror = (e) => console.warn('[useInterviewSocket] error', e);
+
+      ws.onmessage = (event) => {
+        let msg;
+        try { msg = JSON.parse(event.data); } catch { return; }
+        const handler = handlersRef.current?.[msg.type];
+        if (handler) handler(msg);
+      };
+    }
+
+    connect();
+
+    return () => {
+      shouldReconnect.current = false;
+      clearTimeout(retryTimerRef.current);
+      wsRef.current?.close();
     };
-
-    return () => ws.close();
   }, [sessionId]);
 
   const send = useCallback((payload) => {

@@ -243,7 +243,7 @@ router.post('/:id/finish', async (req, res) => {
 
     const scored = session.questions.filter((q) => q.finalScore > 0);
     const overallScore = scored.length
-      ? Math.round(scored.reduce((sum, q) => sum + q.finalScore, 0) / scored.length)
+      ? parseFloat((scored.reduce((sum, q) => sum + q.finalScore, 0) / scored.length).toFixed(1))
       : 0;
 
     session.overallScore = overallScore;

@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Shell from "./components/Shell.jsx";
+import { useClerkBridge } from "./hooks/useClerkBridge.js";
 
 const LandingPage = lazy(() => import("./pages/LandingPage.jsx"));
 const Login = lazy(() => import("./pages/Login.jsx"));
@@ -33,6 +34,9 @@ function WithShell({ children }) {
 }
 
 export default function App() {
+  // Bridge: after Clerk sign-in, silently exchange for a local backend JWT.
+  useClerkBridge();
+
   return (
     <Suspense
       fallback={
