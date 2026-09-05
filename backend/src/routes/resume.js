@@ -3,6 +3,7 @@ const multer = require('multer');
 const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 const Resume = require('../models/Resume');
+const JobDescription = require('../models/JobDescription');
 const User = require('../models/User');
 const { requireAuth } = require('../middleware/auth');
 const { callAI } = require('../services/aiAdapter');
@@ -104,6 +105,10 @@ router.post('/upload', upload.single('resume'), async (req, res) => {
       parsed,
       atsScore,
       atsBreakdown,
+      scoreLabel: atsResult.scoreLabel || 'Generic ATS Score',
+      isJdSpecific: false,
+      targetJdId: null,
+      targetJdTitle: '',
       missingKeywords: mergedMissing,
       weakBullets,
     });
@@ -116,6 +121,91 @@ router.post('/upload', upload.single('resume'), async (req, res) => {
   } catch (err) {
     console.error('[resume] upload route error:', err.message, err.stack);
     res.status(500).json({ error: 'Resume upload failed', detail: err.message });
+  }
+});
+
+// ── POST /api/resume/rescore — Re-score resume against a selected JD or reset to generic ──
+router.post('/rescore', async (req, res) => {
+  try {
+    const { resumeId, jdId } = req.body;
+    const query = resumeId ? { _id: resumeId, userId: req.userId } : { userId: req.userId };
+    const resume = await Resume.findOne(query).sort({ version: -1 });
+    if (!resume) return res.status(404).json({ error: 'Resume not found' });
+
+    let jd = null;
+    if (jdId) {
+      jd = await JobDescription.findOne({ _id: jdId, userId: req.userId });
+      if (!jd) return res.status(404).json({ error: 'Target Job Description not found' });
+    }
+
+    const user = await User.findById(req.userId);
+    const atsResult = computeAtsScore({
+      rawText: resume.rawText,
+      parsed: resume.parsed,
+      targetRole: jd?.jobTitle || user?.targetRole,
+      weakBullets: resume.weakBullets,
+      fileSizeBytes: resume.fileData ? resume.fileData.length : (resume.rawText ? resume.rawText.length * 1.5 : 0),
+      mimeType: resume.mimeType || 'application/pdf',
+      jd,
+    });
+
+    resume.atsScore = atsResult.score;
+    resume.atsBreakdown = atsResult.breakdown;
+    resume.scoreLabel = atsResult.scoreLabel;
+    resume.isJdSpecific = atsResult.isJdSpecific;
+    resume.targetJdId = jd ? jd._id : null;
+    resume.targetJdTitle = jd ? `${jd.jobTitle}${jd.company ? ` (${jd.company})` : ''}` : '';
+    resume.missingKeywords = atsResult.missingKeywords;
+    await resume.save();
+
+    const out = resume.toObject();
+    delete out.fileData;
+    res.json(out);
+  } catch (err) {
+    console.error('[resume] rescore error:', err.message, err.stack);
+    res.status(500).json({ error: 'Failed to re-score resume', detail: err.message });
+  }
+});
+
+router.post('/:id/score', async (req, res) => {
+  req.body.resumeId = req.params.id;
+  try {
+    const { jdId } = req.body;
+    const resume = await Resume.findOne({ _id: req.params.id, userId: req.userId });
+    if (!resume) return res.status(404).json({ error: 'Resume not found' });
+
+    let jd = null;
+    if (jdId) {
+      jd = await JobDescription.findOne({ _id: jdId, userId: req.userId });
+      if (!jd) return res.status(404).json({ error: 'Target Job Description not found' });
+    }
+
+    const user = await User.findById(req.userId);
+    const atsResult = computeAtsScore({
+      rawText: resume.rawText,
+      parsed: resume.parsed,
+      targetRole: jd?.jobTitle || user?.targetRole,
+      weakBullets: resume.weakBullets,
+      fileSizeBytes: resume.fileData ? resume.fileData.length : (resume.rawText ? resume.rawText.length * 1.5 : 0),
+      mimeType: resume.mimeType || 'application/pdf',
+      jd,
+    });
+
+    resume.atsScore = atsResult.score;
+    resume.atsBreakdown = atsResult.breakdown;
+    resume.scoreLabel = atsResult.scoreLabel;
+    resume.isJdSpecific = atsResult.isJdSpecific;
+    resume.targetJdId = jd ? jd._id : null;
+    resume.targetJdTitle = jd ? `${jd.jobTitle}${jd.company ? ` (${jd.company})` : ''}` : '';
+    resume.missingKeywords = atsResult.missingKeywords;
+    await resume.save();
+
+    const out = resume.toObject();
+    delete out.fileData;
+    res.json(out);
+  } catch (err) {
+    console.error('[resume] :id/score error:', err.message, err.stack);
+    res.status(500).json({ error: 'Failed to re-score resume', detail: err.message });
   }
 });
 

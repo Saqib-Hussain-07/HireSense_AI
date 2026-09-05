@@ -53,6 +53,7 @@ export const api = {
     form.append('resume', file);
     return request('/resume/upload', { method: 'POST', body: form, isForm: true });
   },
+  rescoreResume: (body) => request('/resume/rescore', { method: 'POST', body }),
   getResumeVersions: () => request('/resume/versions'),
   getResume: (id) => request(`/resume/${id}`),
 

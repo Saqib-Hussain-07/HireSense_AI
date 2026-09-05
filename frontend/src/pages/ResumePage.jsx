@@ -6,11 +6,22 @@ import { api } from '../lib/api';
 export default function ResumePage() {
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
+  const [rescoring, setRescoring] = useState(false);
   const [error, setError] = useState('');
+  const [selectedJdId, setSelectedJdId] = useState('');
   const queryClient = useQueryClient();
 
   const { data: versions } = useQuery({ queryKey: ['resumeVersions'], queryFn: api.getResumeVersions });
+  const { data: jds } = useQuery({ queryKey: ['jobDescriptions'], queryFn: api.getJDs });
   const latest = versions?.[0];
+
+  React.useEffect(() => {
+    if (latest?.targetJdId) {
+      setSelectedJdId(latest.targetJdId);
+    } else {
+      setSelectedJdId('');
+    }
+  }, [latest?._id, latest?.targetJdId]);
 
   async function handleFile(e) {
     const file = e.target.files[0];
@@ -25,6 +36,21 @@ export default function ResumePage() {
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
+    }
+  }
+
+  async function handleTargetJdChange(newJdId) {
+    setSelectedJdId(newJdId);
+    if (!latest?._id) return;
+    setRescoring(true);
+    setError('');
+    try {
+      await api.rescoreResume({ resumeId: latest._id, jdId: newJdId || null });
+      queryClient.invalidateQueries({ queryKey: ['resumeVersions'] });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRescoring(false);
     }
   }
 
@@ -46,18 +72,49 @@ export default function ResumePage() {
 
         {latest && (
           <div className="bg-panel border border-hairline rounded-xl p-6 space-y-5">
+            {/* ── Target JD Selector (Re-score on-demand) ── */}
+            <div className="bg-panel2/60 border border-hairline/80 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-mono text-muted uppercase tracking-wider">Evaluation Target</p>
+                <p className="text-[11px] text-faint">Re-evaluate against a specific job posting or generic ATS benchmark</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedJdId}
+                  disabled={rescoring}
+                  onChange={(e) => handleTargetJdChange(e.target.value)}
+                  className="bg-panel border border-hairline rounded-lg px-3 py-1.5 text-xs text-text focus:outline-none focus:border-onair/60 transition-colors"
+                >
+                  <option value="">Generic ATS Benchmark</option>
+                  {jds?.map((jd) => (
+                    <option key={jd._id} value={jd._id}>
+                      {jd.jobTitle || 'Untitled'}{jd.company ? ` (${jd.company})` : ''}
+                    </option>
+                  ))}
+                </select>
+                {rescoring && <span className="text-xs text-onair animate-pulse font-mono">Scoring…</span>}
+              </div>
+            </div>
+
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted font-mono">version {latest.version}</p>
               <div className="text-right">
                 <p className="text-3xl font-display font-semibold text-onair">{latest.atsScore}</p>
-                <p className="text-xs text-faint">ATS score</p>
+                <p className="text-xs text-faint font-medium">
+                  {latest.scoreLabel || (latest.isJdSpecific ? 'JD Match Score' : 'Generic ATS Score')}
+                </p>
               </div>
             </div>
 
             {/* ── ATS Multi-Component Breakdown ── */}
             {latest.atsBreakdown ? (
               <div className="space-y-2.5">
-                <p className="text-xs text-muted font-mono uppercase tracking-wider">ATS Score Breakdown</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted font-mono uppercase tracking-wider">
+                    {latest.isJdSpecific ? 'JD Match Breakdown' : 'ATS Score Breakdown'}
+                  </p>
+                  <span className="text-[10px] font-mono text-faint">35 / 20 / 20 / 15 / 10 Formula</span>
+                </div>
                 <div className="grid grid-cols-1 gap-2.5">
                   <div className="space-y-1.5 bg-panel2/60 border border-hairline/60 rounded-xl p-3">
                     <div className="flex items-center justify-between">
@@ -143,7 +200,9 @@ export default function ResumePage() {
 
             {latest.missingKeywords?.length > 0 && (
               <div>
-                <p className="text-xs text-muted font-mono mb-2 uppercase">Missing keywords</p>
+                <p className="text-xs text-muted font-mono mb-2 uppercase">
+                  {latest.isJdSpecific ? 'Missing JD requirements & skills' : 'Missing keywords'}
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {latest.missingKeywords.map((k) => (
                     <span key={k} className="text-xs bg-panel2 border border-hairline rounded-full px-2.5 py-1 text-muted">

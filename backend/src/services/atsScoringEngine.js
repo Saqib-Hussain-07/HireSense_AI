@@ -54,25 +54,79 @@ function resolveRoleCategory(targetRole = '') {
 
 /**
  * 1. Keyword & Skill Match (35% weight)
- * Compares detected skills and resume text against role keyword requirements.
+ * Compares detected skills and resume text against role keyword requirements,
+ * or against JD required/preferred skills when jd is provided.
  */
-function computeKeywordSkillMatch(rawText = '', parsedSkills = [], targetRole = 'general') {
-  const category = resolveRoleCategory(targetRole);
-  const keywords = ROLE_KEYWORD_BANKS[category] || ROLE_KEYWORD_BANKS.general;
-  const lowerText = rawText.toLowerCase();
-
+function computeKeywordSkillMatch(rawText = '', parsedSkills = [], targetRole = 'general', jd = null) {
+  const lowerText = (rawText || '').toLowerCase();
   const detectedSkillSet = new Set(
     (parsedSkills || []).map((s) => (typeof s === 'string' ? s.toLowerCase() : ''))
   );
 
+  // If JD is provided, evaluate match specifically against JD's required & preferred skills
+  if (jd && (Array.isArray(jd.requiredSkills) || Array.isArray(jd.niceToHave))) {
+    const required = Array.isArray(jd.requiredSkills) ? jd.requiredSkills : [];
+    const niceToHave = Array.isArray(jd.niceToHave) ? jd.niceToHave : [];
+
+    const matchedRequired = [];
+    const missingRequired = [];
+    for (const req of required) {
+      const lowerReq = (req || '').toLowerCase();
+      if (!lowerReq) continue;
+      if (detectedSkillSet.has(lowerReq) || lowerText.includes(lowerReq)) {
+        matchedRequired.push(req);
+      } else {
+        missingRequired.push(req);
+      }
+    }
+
+    const matchedNice = [];
+    const missingNice = [];
+    for (const nice of niceToHave) {
+      const lowerNice = (nice || '').toLowerCase();
+      if (!lowerNice) continue;
+      if (detectedSkillSet.has(lowerNice) || lowerText.includes(lowerNice)) {
+        matchedNice.push(nice);
+      } else {
+        missingNice.push(nice);
+      }
+    }
+
+    const reqRatio = required.length > 0 ? matchedRequired.length / required.length : 1.0;
+    const niceRatio = niceToHave.length > 0 ? matchedNice.length / niceToHave.length : 1.0;
+
+    let scorePoints;
+    if (required.length > 0 && niceToHave.length > 0) {
+      scorePoints = Math.round(reqRatio * 75 + niceRatio * 15);
+    } else if (required.length > 0) {
+      scorePoints = Math.round(reqRatio * 90);
+    } else if (niceToHave.length > 0) {
+      scorePoints = Math.round(niceRatio * 90);
+    } else {
+      scorePoints = 70;
+    }
+
+    // Bonus for breadth of unique detected skills (up to 10 points)
+    const breadthBonus = Math.min(10, Math.round((detectedSkillSet.size / 6) * 10));
+    const score = Math.max(10, Math.min(100, scorePoints + breadthBonus));
+
+    return {
+      score,
+      matchedCount: matchedRequired.length + matchedNice.length,
+      matchedKeywords: [...matchedRequired, ...matchedNice],
+      missingKeywords: [...missingRequired, ...missingNice].slice(0, 8),
+      isJdSpecific: true,
+    };
+  }
+
+  // Generic case (jd: null) — compare against curated role keyword bank
+  const category = resolveRoleCategory(targetRole);
+  const keywords = ROLE_KEYWORD_BANKS[category] || ROLE_KEYWORD_BANKS.general;
   const matchedKeywords = [];
   const missingKeywords = [];
 
   for (const kw of keywords) {
-    const isMatched =
-      detectedSkillSet.has(kw) ||
-      lowerText.includes(kw);
-
+    const isMatched = detectedSkillSet.has(kw) || lowerText.includes(kw);
     if (isMatched) {
       matchedKeywords.push(kw);
     } else {
@@ -95,6 +149,7 @@ function computeKeywordSkillMatch(rawText = '', parsedSkills = [], targetRole = 
     matchedCount: matchedKeywords.length,
     matchedKeywords,
     missingKeywords: missingKeywords.slice(0, 6),
+    isJdSpecific: false,
   };
 }
 
@@ -344,8 +399,10 @@ function computeAtsScore({
   weakBullets = [],
   fileSizeBytes = 0,
   mimeType = 'application/pdf',
+  jd = null,
 }) {
-  const keywordMatch = computeKeywordSkillMatch(rawText, parsed?.skills, targetRole);
+  const resolvedRole = jd?.jobTitle || targetRole || 'general';
+  const keywordMatch = computeKeywordSkillMatch(rawText, parsed?.skills, resolvedRole, jd);
   const formatting = computeFormattingParseability(rawText, fileSizeBytes, mimeType);
   const impact = computeQuantifiedImpact(rawText, parsed?.experience, parsed?.projects);
   const completeness = computeSectionCompleteness(rawText, parsed);
@@ -376,21 +433,34 @@ function computeAtsScore({
     completeness.score * 0.15 +
     bulletQuality * 0.10;
 
-  const atsScore = Math.max(10, Math.min(100, Math.round(weightedTotal)));
+  const score = Math.max(10, Math.min(100, Math.round(weightedTotal)));
+  const isJdSpecific = !!jd;
+  const scoreLabel = jd?.jobTitle
+    ? `Match Score for ${jd.jobTitle}${jd.company ? ` (${jd.company})` : ''}`
+    : 'Generic ATS Score';
 
   return {
-    atsScore,
+    score,
+    atsScore: score,
+    matchPercent: score,
+    isJdSpecific,
+    scoreLabel,
+    targetRole: resolvedRole,
+    targetJdId: jd?._id ? String(jd._id) : null,
     breakdown: {
       keywordSkillMatch: {
         score: keywordMatch.score,
         weight: '35%',
+        label: isJdSpecific ? 'JD Skill & Keyword Match' : 'Keyword & Skill Match',
         points: parseFloat((keywordMatch.score * 0.35).toFixed(1)),
         matchedCount: keywordMatch.matchedCount,
+        matchedKeywords: keywordMatch.matchedKeywords,
         missingKeywords: keywordMatch.missingKeywords,
       },
       formattingParseability: {
         score: formatting.score,
         weight: '20%',
+        label: 'Parseability & Formatting',
         points: parseFloat((formatting.score * 0.20).toFixed(1)),
         wordCount: formatting.wordCount,
         charsPerKB: formatting.charsPerKB,
@@ -402,6 +472,7 @@ function computeAtsScore({
       quantifiedImpact: {
         score: impact.score,
         weight: '20%',
+        label: 'Quantified Impact',
         points: parseFloat((impact.score * 0.20).toFixed(1)),
         metricBulletsCount: impact.metricBulletsCount,
         totalBullets: impact.totalBullets,
@@ -409,6 +480,7 @@ function computeAtsScore({
       sectionCompleteness: {
         score: completeness.score,
         weight: '15%',
+        label: 'Section Completeness',
         points: parseFloat((completeness.score * 0.15).toFixed(1)),
         presentSections: completeness.presentSections,
         missingSections: completeness.missingSections,
@@ -416,10 +488,12 @@ function computeAtsScore({
       bulletQuality: {
         score: bulletQuality,
         weight: '10%',
+        label: 'Bullet & Language Quality',
         points: parseFloat((bulletQuality * 0.10).toFixed(1)),
       },
     },
     missingKeywords: keywordMatch.missingKeywords,
+    matchedKeywords: keywordMatch.matchedKeywords,
   };
 }
 

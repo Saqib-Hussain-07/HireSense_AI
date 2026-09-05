@@ -310,4 +310,80 @@ describe('atsScoringEngine', () => {
       expect(result.atsScore).toBeGreaterThanOrEqual(75);
     });
   });
+
+  describe('unified scoring formula (generic vs JD match)', () => {
+    const rawText = `
+      Jordan Lee | jordan@example.com | 555-111-2222
+      Experience:
+      Cloud Platform Engineer at Acme
+      - Orchestrated Kubernetes clusters across 3 regions with 99.99% availability.
+      - Automated infrastructure using Terraform, reducing provisioning time by 75%.
+      - Migrated legacy services to AWS EKS, saving $150K in compute costs.
+      Education: BS Computer Science
+      Skills: Kubernetes, Terraform, AWS, Docker, Linux, Python
+      Projects: Multi-cloud monitoring system
+      ${'cloud infrastructure reliability engineering '.repeat(100)}
+    `;
+
+    const parsed = {
+      skills: ['Kubernetes', 'Terraform', 'AWS', 'Docker', 'Linux', 'Python'],
+      experience: [
+        {
+          highlights: [
+            'Orchestrated Kubernetes clusters across 3 regions with 99.99% availability.',
+            'Automated infrastructure using Terraform, reducing provisioning time by 75%.',
+            'Migrated legacy services to AWS EKS, saving $150K in compute costs.',
+          ],
+        },
+      ],
+      education: [{ degree: 'BS' }],
+      projects: [{ name: 'Multi-cloud monitoring system' }],
+    };
+
+    test('generic evaluation (jd: null) outputs Generic ATS Score label', () => {
+      const result = computeAtsScore({
+        rawText,
+        parsed,
+        targetRole: 'DevOps Engineer',
+        jd: null,
+      });
+
+      expect(result.isJdSpecific).toBe(false);
+      expect(result.scoreLabel).toBe('Generic ATS Score');
+      expect(result.atsScore).toBeGreaterThanOrEqual(80);
+      expect(result.breakdown.keywordSkillMatch.label).toBe('Keyword & Skill Match');
+    });
+
+    test('JD match evaluation (jd: {...}) outputs Match Score for [Job Title] and targets JD skills', () => {
+      const jd = {
+        _id: 'jd_12345',
+        jobTitle: 'Senior Infrastructure Engineer',
+        company: 'CloudScale',
+        requiredSkills: ['Kubernetes', 'Terraform', 'AWS'],
+        niceToHave: ['Go', 'Rust'],
+      };
+
+      const result = computeAtsScore({
+        rawText,
+        parsed,
+        targetRole: 'DevOps',
+        jd,
+      });
+
+      expect(result.isJdSpecific).toBe(true);
+      expect(result.scoreLabel).toBe('Match Score for Senior Infrastructure Engineer (CloudScale)');
+      expect(result.targetJdId).toBe('jd_12345');
+      expect(result.breakdown.keywordSkillMatch.label).toBe('JD Skill & Keyword Match');
+
+      // Candidate has Kubernetes, Terraform, AWS (all required matches)
+      expect(result.breakdown.keywordSkillMatch.matchedKeywords).toEqual(
+        expect.arrayContaining(['Kubernetes', 'Terraform', 'AWS'])
+      );
+      // Missing nice-to-have skills: Go, Rust
+      expect(result.breakdown.keywordSkillMatch.missingKeywords).toEqual(
+        expect.arrayContaining(['Go', 'Rust'])
+      );
+      expect(result.matchPercent).toBe(result.score);
+    });
+  });
 });

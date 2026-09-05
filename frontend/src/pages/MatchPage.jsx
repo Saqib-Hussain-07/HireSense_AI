@@ -109,8 +109,67 @@ export default function MatchPage() {
           <div className="bg-panel border border-hairline rounded-xl p-6 space-y-5">
             <div className="flex items-center gap-4">
               <div className="text-4xl font-display font-semibold text-onair">{result.matchPercent}%</div>
-              <p className="text-sm text-muted">match with this job description</p>
+              <div>
+                <p className="text-sm font-medium text-text">Match Score</p>
+                <p className="text-xs text-muted">Derived from unified 35/20/20/15/10 ATS formula</p>
+              </div>
             </div>
+
+            {result.breakdown && (
+              <div className="space-y-2 bg-panel2/40 border border-hairline/60 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs text-muted font-mono uppercase tracking-wider">Formula Breakdown</p>
+                  <span className="text-[10px] font-mono text-faint">35 / 20 / 20 / 15 / 10</span>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="space-y-1 bg-panel/60 border border-hairline/50 rounded-lg p-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-text">JD Skill & Keyword Match (35%)</span>
+                      <span className="text-xs font-bold font-mono text-signal">{result.breakdown.keywordSkillMatch?.score || 0}/100</span>
+                    </div>
+                    <div className="h-1.5 bg-panel2 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-signal" style={{ width: `${result.breakdown.keywordSkillMatch?.score || 0}%` }} />
+                    </div>
+                  </div>
+                  <div className="space-y-1 bg-panel/60 border border-hairline/50 rounded-lg p-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-text">Parseability & Formatting (20%)</span>
+                      <span className="text-xs font-bold font-mono text-signal">{result.breakdown.formattingParseability?.score || 0}/100</span>
+                    </div>
+                    <div className="h-1.5 bg-panel2 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-signal" style={{ width: `${result.breakdown.formattingParseability?.score || 0}%` }} />
+                    </div>
+                  </div>
+                  <div className="space-y-1 bg-panel/60 border border-hairline/50 rounded-lg p-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-text">Quantified Impact (20%)</span>
+                      <span className="text-xs font-bold font-mono text-signal">{result.breakdown.quantifiedImpact?.score || 0}/100</span>
+                    </div>
+                    <div className="h-1.5 bg-panel2 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-signal" style={{ width: `${result.breakdown.quantifiedImpact?.score || 0}%` }} />
+                    </div>
+                  </div>
+                  <div className="space-y-1 bg-panel/60 border border-hairline/50 rounded-lg p-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-text">Section Completeness (15%)</span>
+                      <span className="text-xs font-bold font-mono text-signal">{result.breakdown.sectionCompleteness?.score || 0}/100</span>
+                    </div>
+                    <div className="h-1.5 bg-panel2 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-signal" style={{ width: `${result.breakdown.sectionCompleteness?.score || 0}%` }} />
+                    </div>
+                  </div>
+                  <div className="space-y-1 bg-panel/60 border border-hairline/50 rounded-lg p-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-text">Bullet & Language Quality (10%)</span>
+                      <span className="text-xs font-bold font-mono text-signal">{result.breakdown.bulletQuality?.score || 0}/100</span>
+                    </div>
+                    <div className="h-1.5 bg-panel2 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-signal" style={{ width: `${result.breakdown.bulletQuality?.score || 0}%` }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>

@@ -16,6 +16,7 @@ const MatchReportSchema = new mongoose.Schema(
     resumeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Resume', required: true },
     jdId: { type: mongoose.Schema.Types.ObjectId, ref: 'JobDescription', required: true },
     matchPercent: { type: Number, default: 0 },
+    breakdown: { type: mongoose.Schema.Types.Mixed, default: null },
     missing: { type: [String], default: [] },
     strong: { type: [String], default: [] },
     skillGaps: { type: [SkillGapSchema], default: [] },

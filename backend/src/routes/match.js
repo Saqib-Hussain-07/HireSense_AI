@@ -5,6 +5,7 @@ const MatchReport = require('../models/MatchReport');
 const { requireAuth } = require('../middleware/auth');
 const { callAI } = require('../services/aiAdapter');
 const { matchReportPrompt } = require('../utils/prompts');
+const { computeAtsScore } = require('../services/atsScoringEngine');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -18,21 +19,50 @@ router.post('/', async (req, res) => {
     const jd = await JobDescription.findOne({ _id: jdId, userId: req.userId });
     if (!resume || !jd) return res.status(404).json({ error: 'Resume or JD not found for this user' });
 
-    const { data } = await callAI({
-      ...matchReportPrompt(resume.parsed, jd),
-      jsonOnly: true,
-      temperature: 0.2, // Consistent match percentage calculation
+    // Calculate unified deterministic match score using the shared engine
+    const atsResult = computeAtsScore({
+      rawText: resume.rawText,
+      parsed: resume.parsed,
+      targetRole: jd.jobTitle,
+      weakBullets: resume.weakBullets,
+      fileSizeBytes: resume.fileData ? resume.fileData.length : (resume.rawText ? resume.rawText.length * 1.5 : 0),
+      mimeType: resume.mimeType || 'application/pdf',
+      jd,
     });
+
+    // LLM strictly generates qualitative skill gaps, explanations, and resources
+    let data = { skillGaps: [], missing: [], strong: [] };
+    try {
+      const aiRes = await callAI({
+        ...matchReportPrompt(resume.parsed, jd),
+        jsonOnly: true,
+        temperature: 0.2,
+      });
+      data = aiRes.data || data;
+    } catch (aiErr) {
+      console.warn('[match] AI qualitative gap extraction failed, proceeding with deterministic report:', aiErr.message);
+    }
 
     const report = await MatchReport.create({
       userId: req.userId,
       resumeId,
       jdId,
-      matchPercent: data.matchPercent || 0,
-      missing: data.missing || [],
-      strong: data.strong || [],
+      matchPercent: atsResult.score,
+      breakdown: atsResult.breakdown,
+      missing: atsResult.missingKeywords.length > 0 ? atsResult.missingKeywords : (data.missing || []),
+      strong: atsResult.matchedKeywords.length > 0 ? atsResult.matchedKeywords : (data.strong || []),
       skillGaps: data.skillGaps || [],
     });
+
+    // Sync match score & label back to resume so candidate sees updated match
+    resume.atsScore = atsResult.score;
+    resume.atsBreakdown = atsResult.breakdown;
+    resume.scoreLabel = atsResult.scoreLabel;
+    resume.isJdSpecific = true;
+    resume.targetJdId = jd._id;
+    resume.targetJdTitle = `${jd.jobTitle}${jd.company ? ` (${jd.company})` : ''}`;
+    resume.missingKeywords = atsResult.missingKeywords;
+    await resume.save();
 
     res.status(201).json(report);
   } catch (err) {
