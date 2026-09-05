@@ -75,4 +75,23 @@ describe('aiAdapter.callAI', () => {
 
     await expect(callAI({ system: 's', prompt: 'p', jsonOnly: true })).rejects.toThrow('AI_MALFORMED_JSON');
   });
+
+  test('propagates temperature parameter into Gemini generationConfig and Groq payload', async () => {
+    fetch.mockResolvedValueOnce(geminiResponse('gemini with low temp'));
+
+    await callAI({ system: 's', prompt: 'p', temperature: 0.2 });
+
+    const firstCallBody = JSON.parse(fetch.mock.calls[0][1].body);
+    expect(firstCallBody.generationConfig.temperature).toBe(0.2);
+
+    // Test fallback with temperature
+    fetch.mockReset();
+    fetch.mockResolvedValueOnce({ ok: false, status: 500 });
+    fetch.mockResolvedValueOnce(groqResponse('groq with low temp'));
+
+    await callAI({ system: 's', prompt: 'p', temperature: 0.2 });
+
+    const groqCallBody = JSON.parse(fetch.mock.calls[1][1].body);
+    expect(groqCallBody.temperature).toBe(0.2);
+  });
 });

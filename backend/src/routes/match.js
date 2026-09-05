@@ -18,7 +18,11 @@ router.post('/', async (req, res) => {
     const jd = await JobDescription.findOne({ _id: jdId, userId: req.userId });
     if (!resume || !jd) return res.status(404).json({ error: 'Resume or JD not found for this user' });
 
-    const { data } = await callAI({ ...matchReportPrompt(resume.parsed, jd), jsonOnly: true });
+    const { data } = await callAI({
+      ...matchReportPrompt(resume.parsed, jd),
+      jsonOnly: true,
+      temperature: 0.2, // Consistent match percentage calculation
+    });
 
     const report = await MatchReport.create({
       userId: req.userId,

@@ -84,6 +84,7 @@ async function scoreAnswer({ question, answerTranscript, targetRole, company, mo
   const { data } = await callAI({
     ...rubricScoringPrompt({ question, answerTranscript, targetRole, company, mode, persona, sessionType }),
     jsonOnly: true,
+    temperature: 0.2, // Consistent, repeatable assessment scoring (avoids creative drift)
   });
 
   // Defensive validation: clip LLM scores strictly to 0-10

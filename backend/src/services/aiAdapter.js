@@ -50,7 +50,12 @@ function isGeminiKeyValid(key) {
   return false;
 }
 
-async function callGeminiModel(key, model, system, prompt) {
+async function callGeminiModel(key, model, system, prompt, temperature) {
+  const generationConfig = { maxOutputTokens: 4096 };
+  if (typeof temperature === 'number') {
+    generationConfig.temperature = temperature;
+  }
+
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
     {
@@ -58,7 +63,7 @@ async function callGeminiModel(key, model, system, prompt) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: `${system}\n\n${prompt}` }] }],
-        generationConfig: { maxOutputTokens: 4096 },
+        generationConfig,
       }),
     }
   );
@@ -80,7 +85,7 @@ async function callGeminiModel(key, model, system, prompt) {
   return text;
 }
 
-async function callGemini({ system, prompt }) {
+async function callGemini({ system, prompt, temperature }) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error('GEMINI_API_KEY not configured');
   if (!isGeminiKeyValid(key)) throw new Error('GEMINI_API_KEY format invalid — get a key from aistudio.google.com');
@@ -88,7 +93,7 @@ async function callGemini({ system, prompt }) {
   // Try each model in priority order; skip quota-exhausted models
   for (const model of GEMINI_MODELS) {
     try {
-      const text = await callGeminiModel(key, model, system, prompt);
+      const text = await callGeminiModel(key, model, system, prompt, temperature);
       return text;
     } catch (err) {
       if (err.message.startsWith('QUOTA_EXHAUSTED') || err.message.startsWith('MODEL_NOT_FOUND')) {
@@ -101,7 +106,7 @@ async function callGemini({ system, prompt }) {
   throw new Error('Gemini: all models exhausted quota or unavailable');
 }
 
-async function callGroqFallback({ system, prompt }) {
+async function callGroqFallback({ system, prompt, temperature }) {
   const key = process.env.GROQ_API_KEY;
   if (!key) throw new Error('GROQ_API_KEY not configured');
   // Try multiple Groq models in order; llama-3.1-8b-instant is fastest but
@@ -113,14 +118,18 @@ async function callGroqFallback({ system, prompt }) {
   ];
   for (const model of GROQ_MODELS) {
     try {
+      const payload = {
+        model,
+        messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }],
+        max_tokens: 4096,
+      };
+      if (typeof temperature === 'number') {
+        payload.temperature = temperature;
+      }
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }],
-          max_tokens: 4096,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({}));
@@ -147,18 +156,19 @@ async function callGroqFallback({ system, prompt }) {
  * @param {string} opts.system - system-style instructions (role, constraints)
  * @param {string} opts.prompt - the specific narrow task + data
  * @param {boolean} [opts.jsonOnly] - if true, attempts to JSON.parse the result
+ * @param {number} [opts.temperature] - sampling temperature (e.g. 0.2 for repeatable scoring)
  * @returns {Promise<string|object>}
  */
-async function callAI({ system = '', prompt, jsonOnly = false }) {
+async function callAI({ system = '', prompt, jsonOnly = false, temperature = undefined }) {
   let rawText;
   let usedProvider = 'primary';
   try {
-    rawText = await withTimeout(callGemini({ system, prompt }), PRIMARY_TIMEOUT_MS);
+    rawText = await withTimeout(callGemini({ system, prompt, temperature }), PRIMARY_TIMEOUT_MS);
   } catch (primaryErr) {
     console.warn('[aiAdapter] primary provider failed, falling back:', primaryErr.message);
     usedProvider = 'fallback';
     try {
-      rawText = await withTimeout(callGroqFallback({ system, prompt }), PRIMARY_TIMEOUT_MS);
+      rawText = await withTimeout(callGroqFallback({ system, prompt, temperature }), PRIMARY_TIMEOUT_MS);
     } catch (fallbackErr) {
       console.error('[aiAdapter] fallback provider also failed:', fallbackErr.message);
       throw new Error('AI_UNAVAILABLE: both primary and fallback reasoning providers failed');

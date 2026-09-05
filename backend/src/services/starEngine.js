@@ -14,7 +14,11 @@ async function detectStar(answerTranscript) {
     // Too short to meaningfully classify into STAR components.
     return { situation: false, task: false, action: false, result: false, weakest: 'situation' };
   }
-  const { data } = await callAI({ ...starDetectionPrompt(answerTranscript), jsonOnly: true });
+  const { data } = await callAI({
+    ...starDetectionPrompt(answerTranscript),
+    jsonOnly: true,
+    temperature: 0.1, // Deterministic boolean classification
+  });
   return {
     situation: !!data.situation,
     task: !!data.task,
