@@ -7,6 +7,7 @@ const User = require('../models/User');
 const { requireAuth } = require('../middleware/auth');
 const { callAI } = require('../services/aiAdapter');
 const { resumeAnalyzePrompt } = require('../utils/prompts');
+const { computeAtsScore } = require('../services/atsScoringEngine');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -54,25 +55,43 @@ router.post('/upload', upload.single('resume'), async (req, res) => {
     const user = await User.findById(req.userId);
     const priorCount = await Resume.countDocuments({ userId: req.userId });
 
-    // ── AI parsing + ATS scoring (combined single AI call for speed and reliability) ──
+    // ── AI parsing + scoped bullet review (LLM evaluates language quality & extracts structure) ──
     let parsed = { skills: [], education: [], experience: [], projects: [], certifications: [] };
-    let atsScore = 0, missingKeywords = [], weakBullets = [];
+    let bulletQuality = 75;
+    let missingKeywords = [];
+    let weakBullets = [];
 
     if (rawText.trim().length > 20) {
       try {
         const result = await callAI({
           ...resumeAnalyzePrompt(rawText, user?.targetRole),
           jsonOnly: true,
+          temperature: 0.2,
         });
         parsed = result.data.parsed || parsed;
-        atsScore = result.data.atsScore || 0;
+        bulletQuality = Number(result.data.bulletQuality) || 75;
         missingKeywords = result.data.missingKeywords || [];
         weakBullets = result.data.weakBullets || [];
       } catch (aiErr) {
-        console.error('[resume] AI parsing/ATS failed:', aiErr.message);
-        // Upload still succeeds — structured fields stay empty.
+        console.error('[resume] AI parsing/bullet review failed:', aiErr.message);
+        // Upload still succeeds — structured fields stay empty, deterministic ATS still runs
       }
     }
+
+    // ── Multi-Component Deterministic ATS Calculation ──────────────────────────
+    // 35% Keyword/Skill Match + 20% Formatting + 20% Quantified Impact + 15% Completeness + 10% Bullet Quality
+    const atsResult = computeAtsScore({
+      rawText,
+      parsed,
+      targetRole: user?.targetRole,
+      bulletQualityScore: bulletQuality,
+    });
+
+    const atsScore = atsResult.atsScore;
+    const atsBreakdown = atsResult.breakdown;
+
+    // Merge deterministic missing keywords with LLM suggestions
+    const mergedMissing = Array.from(new Set([...atsResult.missingKeywords, ...missingKeywords])).slice(0, 8);
 
     // ── Persist to MongoDB (binary stored as Buffer field) ───────────────────
     const resume = await Resume.create({
@@ -84,7 +103,8 @@ router.post('/upload', upload.single('resume'), async (req, res) => {
       rawText,
       parsed,
       atsScore,
-      missingKeywords,
+      atsBreakdown,
+      missingKeywords: mergedMissing,
       weakBullets,
     });
 

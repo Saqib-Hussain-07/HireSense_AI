@@ -5,8 +5,11 @@
 
 function resumeAnalyzePrompt(rawText, targetRole) {
   return {
-    system: 'You are an advanced ATS (applicant tracking system) and resume parser. Return JSON only, no conversational text.',
-    prompt: `Resume raw text:\n"""${rawText}"""\n\nTarget role: ${targetRole || 'general'}\n\nPerform a comprehensive ATS analysis and parsing. Return JSON matching this exact schema:
+    system: 'You are an advanced resume parser and executive bullet-writing evaluator. Return JSON only, no conversational text.',
+    prompt: `Resume raw text:\n"""${rawText}"""\n\nTarget role: ${targetRole || 'general'}\n\nPerform a structured extraction and qualitative bullet review.
+Evaluate "bulletQuality" (integer 1-100) based strictly on action-verb strength, clarity, and avoidance of passive fluff.
+Identify 2-4 "weakBullets" that lack impact or metrics and provide high-impact suggested rewrites.
+Return JSON matching this exact schema:
 {
   "parsed": {
     "skills": ["skill1", "skill2"],
@@ -15,10 +18,10 @@ function resumeAnalyzePrompt(rawText, targetRole) {
     "projects": [{"name": "project name", "description": "project description"}],
     "certifications": ["certification name"]
   },
-  "atsScore": 85, // Integer between 0 and 100
+  "bulletQuality": 80, // Integer 1-100 evaluating action verbs and conciseness
   "missingKeywords": ["keyword1", "keyword2"],
   "weakBullets": [
-    { "original": "original bullet point", "suggested": "optimized bullet point with action verbs and quantifiable metrics" }
+    { "original": "original bullet point", "suggested": "optimized bullet point with strong action verbs and quantified impact" }
   ]
 }`,
   };

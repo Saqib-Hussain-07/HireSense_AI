@@ -54,6 +54,84 @@ export default function ResumePage() {
               </div>
             </div>
 
+            {/* ── ATS Multi-Component Breakdown ── */}
+            {latest.atsBreakdown ? (
+              <div className="space-y-2.5">
+                <p className="text-xs text-muted font-mono uppercase tracking-wider">ATS Score Breakdown</p>
+                <div className="grid grid-cols-1 gap-2.5">
+                  <div className="space-y-1.5 bg-panel2/60 border border-hairline/60 rounded-xl p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-text">Keyword & Skill Match</span>
+                        <span className="text-[10px] font-mono text-faint bg-panel px-1.5 py-0.5 rounded border border-hairline">35%</span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-signal/10 text-signal">Deterministic Code</span>
+                      </div>
+                      <span className="text-xs font-bold font-mono text-signal">{latest.atsBreakdown.keywordSkillMatch?.score || 0}/100</span>
+                    </div>
+                    <div className="h-1.5 bg-panel rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-signal transition-all duration-700" style={{ width: `${latest.atsBreakdown.keywordSkillMatch?.score || 0}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 bg-panel2/60 border border-hairline/60 rounded-xl p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-text">Parseability & Formatting</span>
+                        <span className="text-[10px] font-mono text-faint bg-panel px-1.5 py-0.5 rounded border border-hairline">20%</span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-signal/10 text-signal">Deterministic Code</span>
+                      </div>
+                      <span className="text-xs font-bold font-mono text-signal">{latest.atsBreakdown.formattingParseability?.score || 0}/100</span>
+                    </div>
+                    <div className="h-1.5 bg-panel rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-signal transition-all duration-700" style={{ width: `${latest.atsBreakdown.formattingParseability?.score || 0}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 bg-panel2/60 border border-hairline/60 rounded-xl p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-text">Quantified Impact</span>
+                        <span className="text-[10px] font-mono text-faint bg-panel px-1.5 py-0.5 rounded border border-hairline">20%</span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-signal/10 text-signal">Deterministic Regex</span>
+                      </div>
+                      <span className="text-xs font-bold font-mono text-signal">{latest.atsBreakdown.quantifiedImpact?.score || 0}/100</span>
+                    </div>
+                    <div className="h-1.5 bg-panel rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-signal transition-all duration-700" style={{ width: `${latest.atsBreakdown.quantifiedImpact?.score || 0}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 bg-panel2/60 border border-hairline/60 rounded-xl p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-text">Section Completeness</span>
+                        <span className="text-[10px] font-mono text-faint bg-panel px-1.5 py-0.5 rounded border border-hairline">15%</span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-signal/10 text-signal">Deterministic Code</span>
+                      </div>
+                      <span className="text-xs font-bold font-mono text-signal">{latest.atsBreakdown.sectionCompleteness?.score || 0}/100</span>
+                    </div>
+                    <div className="h-1.5 bg-panel rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-signal transition-all duration-700" style={{ width: `${latest.atsBreakdown.sectionCompleteness?.score || 0}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 bg-panel2/60 border border-hairline/60 rounded-xl p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-text">Bullet & Language Quality</span>
+                        <span className="text-[10px] font-mono text-faint bg-panel px-1.5 py-0.5 rounded border border-hairline">10%</span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-onair/10 text-onair">LLM Evaluated</span>
+                      </div>
+                      <span className="text-xs font-bold font-mono text-signal">{latest.atsBreakdown.bulletQuality?.score || 0}/100</span>
+                    </div>
+                    <div className="h-1.5 bg-panel rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-signal transition-all duration-700" style={{ width: `${latest.atsBreakdown.bulletQuality?.score || 0}%` }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             {latest.missingKeywords?.length > 0 && (
               <div>
                 <p className="text-xs text-muted font-mono mb-2 uppercase">Missing keywords</p>

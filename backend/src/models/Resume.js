@@ -26,6 +26,7 @@ const ResumeSchema = new mongoose.Schema(
       certifications: { type: [String],                          default: [] },
     },
     atsScore:        { type: Number,   default: 0 },
+    atsBreakdown:    { type: mongoose.Schema.Types.Mixed, default: null },
     missingKeywords: { type: [String], default: [] },
     weakBullets:     { type: [WeakBulletSchema], default: [] },
   },
