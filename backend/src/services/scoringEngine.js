@@ -87,13 +87,25 @@ async function scoreAnswer({ question, answerTranscript, targetRole, company, mo
     temperature: 0.2, // Consistent, repeatable assessment scoring (avoids creative drift)
   });
 
-  // Defensive validation: clip LLM scores strictly to 0-10
-  const relevance = Math.max(0, Math.min(10, data.scores?.relevance ?? 0));
-  const structure = Math.max(0, Math.min(10, data.scores?.structure ?? 0));
-  const technicalAccuracy = Math.max(0, Math.min(10, data.scores?.technicalAccuracy ?? 0));
-  const businessThinking = Math.max(0, Math.min(10, data.scores?.businessThinking ?? 0));
-  const starRaw = Math.max(0, Math.min(10, data.scores?.star ?? 0));
-  const creativity = Math.max(0, Math.min(10, data.scores?.creativity ?? 0));
+  // Normalize score values:
+  // If the model returned scores on a grounded 1-5 scale, map them to 0-10 (e.g. 1->2, 2->4, 3->6, 4->8, 5->10)
+  const rawScores = data.scores || {};
+  const numericValues = Object.values(rawScores).filter((v) => typeof v === 'number');
+  const is5Scale = numericValues.length > 0 && numericValues.every((v) => v <= 5);
+
+  const normalizeScore = (val) => {
+    const num = Number(val) || 0;
+    if (num <= 0) return 0;
+    const scaled = is5Scale ? num * 2 : num;
+    return Math.max(0, Math.min(10, Math.round(scaled)));
+  };
+
+  const relevance = normalizeScore(rawScores.relevance);
+  const structure = normalizeScore(rawScores.structure);
+  const technicalAccuracy = normalizeScore(rawScores.technicalAccuracy);
+  const businessThinking = normalizeScore(rawScores.businessThinking);
+  const starRaw = normalizeScore(rawScores.star);
+  const creativity = normalizeScore(rawScores.creativity);
 
   let star = starRaw;
   let starCheck = null;
@@ -128,6 +140,15 @@ async function scoreAnswer({ question, answerTranscript, targetRole, company, mo
   // Scale score to 1 to 10
   const finalScore = Math.max(1, Math.min(10, Math.round((weightedTotal / maxScore) * 10)));
 
+  // Derive engagement and confidence deterministically if model omitted them
+  const computedEngagement = Math.min(100, Math.max(15, Math.round((delivery.wordCount / 120) * 100)));
+  const engagement = data.engagement ?? computedEngagement;
+
+  const sentimentMap = { confident: 90, neutral: 75, hesitant: 55, anxious: 45 };
+  const baseConfidence = sentimentMap[data.sentiment] || 75;
+  const computedConfidence = Math.min(100, Math.round(baseConfidence * 0.7 + delivery.deliveryScore * 3));
+  const confidenceScore = data.confidenceScore ?? computedConfidence;
+
   return {
     rubricScores: scores,
     finalScore,
@@ -137,8 +158,8 @@ async function scoreAnswer({ question, answerTranscript, targetRole, company, mo
     technicalFlags: data.technicalFlags || [],
     starCheck,
     sentiment: data.sentiment || 'neutral',
-    engagement: data.engagement || 70,
-    confidenceScore: data.confidenceScore || 85,
+    engagement,
+    confidenceScore,
     jargonHighlights: data.jargonHighlights || [],
     deliveryMeta: { fillerCount: delivery.fillerCount, wpm: delivery.wpm, wordCount: delivery.wordCount },
   };

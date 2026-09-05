@@ -136,4 +136,34 @@ describe('scoreAnswer', () => {
     expect(result.rubricScores.star).toBe(7); // untouched, from the AI response
     expect(result.starCheck).toBeNull();
   });
+
+  test('accurately scales discrete 1-5 grounded rubric scores to standard 0-10 scale', async () => {
+    callAI.mockResolvedValue({
+      data: {
+        scores: {
+          relevance: 5, // 5 -> 10 (Exceptional)
+          structure: 4, // 4 -> 8 (Strong)
+          technicalAccuracy: 3, // 3 -> 6 (Competent)
+          businessThinking: 2, // 2 -> 4 (Needs improvement)
+          creativity: 1, // 1 -> 2 (Poor)
+        },
+        sentiment: 'confident',
+        idealAnswer: 'Model answer.',
+      },
+    });
+
+    const result = await scoreAnswer({
+      question: 'Explain indexes in PostgreSQL.',
+      answerTranscript: 'B-tree indexes speed up search by maintaining a balanced tree structure.',
+      mode: 'coaching',
+      sessionType: 'technical',
+    });
+
+    expect(result.rubricScores.relevance).toBe(10);
+    expect(result.rubricScores.structure).toBe(8);
+    expect(result.rubricScores.technicalAccuracy).toBe(6);
+    expect(result.rubricScores.businessThinking).toBe(4);
+    expect(result.rubricScores.creativity).toBe(2);
+    expect(result.confidenceScore).toBeGreaterThanOrEqual(70);
+  });
 });

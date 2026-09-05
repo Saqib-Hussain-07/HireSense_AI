@@ -64,44 +64,51 @@ function rubricScoringPrompt({ question, answerTranscript, targetRole, company, 
   const personaPrefix = persona ? `${personaSystemPrompt(persona)}\n\n` : '';
   const isBehavioral = sessionType === 'behavioral';
   return {
-    system: `${personaPrefix}You are scoring one interview answer against a fixed rubric. Return JSON only, no preamble.`,
-    prompt: `You are scoring one interview answer. Every category in the "scores" object MUST be graded strictly on a scale of 0 to 10:
-- Relevance (0-10): How directly the answer addresses the question.
-- Structure (0-10): Narrative coherence and organization.
-- TechnicalAccuracy (0-10): Correctness of technical concepts mentioned.
-- BusinessThinking (0-10): Strategic/commercial awareness.
-${isBehavioral ? '- STAR (0-10): STAR method structure compliance (Situation, Task, Action, Result).\n' : ''}- Creativity (0-10): Innovation or custom tradeoffs discussed.
-
-Evaluate also the candidate's sentiment, engagement level, assessment confidence, and technical jargon opportunities.
-Identify specific words or sentences in the transcript where the candidate used vague or overly simple terminology where they should have used technical terminology, industry-standard jargon, or precise vocabulary—and provide optimal technical replacements in the "jargonHighlights" array.
+    system: `${personaPrefix}You are an expert interviewer scoring one answer against a grounded assessment rubric. Return JSON only, with no markdown preamble.`,
+    prompt: `You are evaluating this candidate's interview answer.
 
 Question: ${question}
-Candidate Answer (transcribed): ${answerTranscript}
-Role Context: ${targetRole || ''}, Company: ${company || ''}
+Candidate Answer (transcribed): "${answerTranscript}"
+Role Context: ${targetRole || 'General Engineering'}, Company: ${company || 'Technology Company'}
 Mode: ${mode}
 
-If mode is neutral_assessment: omit encouraging language entirely,
-report only factual scores, gaps, and evidence — no "good job" phrasing.
+Evaluate each dimension strictly on a 1 to 5 integer scale using these clear qualitative bands:
+- 1 (Poor): Fundamentally incorrect, off-topic, evasive, or unorganized.
+- 2 (Needs Improvement): Partial answer, notable conceptual/technical errors, or weak justification.
+- 3 (Competent): Correct core answer, standard knowledge, clear and appropriate structure.
+- 4 (Strong): Well-organized, technically accurate, addresses practical tradeoffs or real-world constraints.
+- 5 (Exceptional): Comprehensive mastery, deep technical precision, clear strategic perspective.
 
-Return JSON only:
+Categories to grade (integers 1 to 5):
+- relevance: How directly and completely the answer addresses the specific question asked.
+- structure: Logical organization, narrative clarity, and pacing.
+- technicalAccuracy: Correctness of technical concepts, tools, or principles mentioned.
+- businessThinking: Commercial awareness, user/business impact, or scalability tradeoffs.
+${isBehavioral ? '- star: STAR method structure compliance (Situation, Task, Action, Result).\n' : ''}- creativity: Innovative thinking, custom tradeoffs, or alternatives discussed.
+
+${mode === 'neutral_assessment' ? 'Omit encouraging language entirely; report only factual scores, gaps, and evidence.' : ''}
+
+Feedback & Evidence:
+- sentiment: "confident" | "hesitant" | "anxious" | "neutral"
+- idealAnswer: 2-3 concise sentences demonstrating an exemplary answer.
+- gapNotes: 1-2 bullet points highlighting specific technical or conceptual omissions.
+- evidenceQuotes: 1-2 key quotes from the transcript with the criterion they demonstrate.
+- jargonHighlights: 0-2 phrases where casual wording could be elevated with precise terminology.
+
+Return JSON only in this exact schema:
 { 
   "scores": {
-    "relevance": 0,
-    "structure": 0,
-    "technicalAccuracy": 0,
-    "businessThinking": 0,
-    ${isBehavioral ? '"star": 0,\n    ' : ''}"creativity": 0
+    "relevance": 3,
+    "structure": 3,
+    "technicalAccuracy": 3,
+    "businessThinking": 3,
+    ${isBehavioral ? '"star": 3,\n    ' : ''}"creativity": 3
   },
-  "sentiment": "confident" | "hesitant" | "anxious" | "neutral",
-  "engagement": 85, // 0 to 100 representing elaboration length and rate
-  "confidenceScore": 90, // 0 to 100 representing your assessment confidence
-  "jargonHighlights": [
-    { "wordOrPhrase": "saves things in memory", "replacement": "caches the state in Redis", "reason": "Mentions in-memory storage; using Redis shows precise technology selection." }
-  ],
-  "idealAnswer": "customized model answer given candidate's trajectory and role requirements",
-  "gapNotes": "missed technical details ...",
-  "evidenceQuotes": [{"criterion":"technicalAccuracy", "quote":"..."}],
-  "technicalFlags": [{"claim":"...", "correct":false, "explanation":"..."}]
+  "sentiment": "confident",
+  "idealAnswer": "2-3 concise sentences of ideal response",
+  "gapNotes": "Specific technical omissions or areas to improve",
+  "evidenceQuotes": [{"criterion": "technicalAccuracy", "quote": "exact phrase"}],
+  "jargonHighlights": [{"wordOrPhrase": "casual phrase", "replacement": "precise industry term", "reason": "why"}]
 }`,
   };
 }
