@@ -87,7 +87,16 @@ function attachWsGateway(httpServer) {
           const nextIndex = questionIndex + 1;
           session.questions[questionIndex].timedOut = true;
           session.currentQuestionIndex = nextIndex;
-          await session.save();
+          await InterviewSession.updateOne(
+            { _id: session._id },
+            {
+              $set: {
+                [`questions.${questionIndex}.timedOut`]: true,
+                currentQuestionIndex: nextIndex,
+                lastSavedAt: new Date(),
+              },
+            }
+          );
           ws.send(JSON.stringify({ type: 'auto_advance', questionIndex, nextIndex }));
           if (nextIndex < session.questions.length) {
             ws.send(JSON.stringify({ type: 'question', questionIndex: nextIndex, text: session.questions[nextIndex].questionText, persona: session.questions[nextIndex].persona || session.persona }));
@@ -194,7 +203,21 @@ function attachWsGateway(httpServer) {
         q.scoringStartedAt = new Date();
         q.followUps = [];
         q.pushback = null;
-        await session.save(); // auto-save after every turn (blueprint reliability rule)
+
+        // Targeted positional update (avoids full-document save of entire questions array)
+        await InterviewSession.updateOne(
+          { _id: session._id },
+          {
+            $set: {
+              [`questions.${questionIndex}.answerTranscript`]: q.answerTranscript,
+              [`questions.${questionIndex}.scoringStatus`]: 'scoring',
+              [`questions.${questionIndex}.scoringStartedAt`]: q.scoringStartedAt,
+              [`questions.${questionIndex}.followUps`]: [],
+              [`questions.${questionIndex}.pushback`]: null,
+              lastSavedAt: new Date(),
+            },
+          }
+        );
 
         try {
           const shortHistory = session.questions.slice(0, questionIndex).map((qq) => ({ q: qq.questionText, a: qq.answerTranscript?.slice(0, 200) }));
@@ -224,10 +247,36 @@ function attachWsGateway(httpServer) {
           if (result.pushback) {
             q.pushback = result.pushback;
           } else if (result.followUp) {
-            q.followUps.push({ q: result.followUp, aTranscript: '' });
+            q.followUps = [{ q: result.followUp, aTranscript: '' }];
           }
 
-          await session.save();
+          const updateFields = {
+            [`questions.${questionIndex}.scoringStatus`]: 'scored',
+            [`questions.${questionIndex}.rubricScores`]: result.rubricScores,
+            [`questions.${questionIndex}.finalScore`]: result.finalScore,
+            [`questions.${questionIndex}.idealAnswer`]: result.idealAnswer,
+            [`questions.${questionIndex}.gapNotes`]: result.gapNotes,
+            [`questions.${questionIndex}.evidenceQuotes`]: result.evidenceQuotes,
+            [`questions.${questionIndex}.sentiment`]: result.sentiment,
+            [`questions.${questionIndex}.engagement`]: result.engagement,
+            [`questions.${questionIndex}.confidenceScore`]: result.confidenceScore,
+            [`questions.${questionIndex}.jargonHighlights`]: result.jargonHighlights,
+            [`questions.${questionIndex}.pushback`]: q.pushback,
+            [`questions.${questionIndex}.followUps`]: q.followUps,
+            lastSavedAt: new Date(),
+          };
+          if (result.verdict) {
+            updateFields[`questions.${questionIndex}.verdict`] = result.verdict;
+          }
+          if (result.starCheck) {
+            updateFields[`questions.${questionIndex}.starCheck`] = result.starCheck;
+          }
+
+          // Targeted positional update for scoring results
+          await InterviewSession.updateOne(
+            { _id: session._id },
+            { $set: updateFields }
+          );
 
           if (ws.readyState === ws.OPEN) {
             ws.send(JSON.stringify({ type: 'scored', questionIndex, result }));
@@ -240,7 +289,15 @@ function attachWsGateway(httpServer) {
         } catch (aiErr) {
           console.error('[wsGateway] scoring/follow-up failed:', aiErr.message);
           q.scoringStatus = 'failed';
-          await session.save();
+          await InterviewSession.updateOne(
+            { _id: session._id },
+            {
+              $set: {
+                [`questions.${questionIndex}.scoringStatus`]: 'failed',
+                lastSavedAt: new Date(),
+              },
+            }
+          );
           if (ws.readyState === ws.OPEN) {
             ws.send(JSON.stringify({ type: 'error', message: 'AI evaluation temporarily unavailable, please retry your answer.' }));
           }
@@ -256,7 +313,15 @@ function attachWsGateway(httpServer) {
         clearSilenceTimers();
         const nextIndex = msg.questionIndex + 1;
         session.currentQuestionIndex = nextIndex;
-        await session.save();
+        await InterviewSession.updateOne(
+          { _id: session._id },
+          {
+            $set: {
+              currentQuestionIndex: nextIndex,
+              lastSavedAt: new Date(),
+            },
+          }
+        );
         if (nextIndex < session.questions.length) {
           const nextQ = session.questions[nextIndex];
           ws.send(
