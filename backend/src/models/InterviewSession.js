@@ -78,7 +78,7 @@ const QuestionSchema = new mongoose.Schema(
 
 const InterviewSessionSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     matchReportId: { type: mongoose.Schema.Types.ObjectId, ref: 'MatchReport' },
     type: {
       type: String,
@@ -104,6 +104,10 @@ const InterviewSessionSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Performance Indexes for fast dashboard, history, and weakness tracking queries
+InterviewSessionSchema.index({ userId: 1, status: 1, createdAt: -1 });
+InterviewSessionSchema.index({ userId: 1, createdAt: -1 });
 
 // Every write to a session should refresh lastSavedAt so /resume can show
 // "last saved X seconds ago" and reload logic has a reliable checkpoint.

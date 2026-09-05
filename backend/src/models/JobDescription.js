@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const JobDescriptionSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     rawText: { type: String, required: true },
     sourceUrl: { type: String, default: null },
     jobTitle: { type: String, default: '' },
@@ -15,5 +15,7 @@ const JobDescriptionSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+JobDescriptionSchema.index({ userId: 1, createdAt: -1 });
 
 module.exports = mongoose.model('JobDescription', JobDescriptionSchema);

@@ -7,7 +7,7 @@ const WeakBulletSchema = new mongoose.Schema(
 
 const ResumeSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     version: { type: Number, default: 1 },
 
     // ── File stored directly in MongoDB (Buffer) ──────────────────────────────
@@ -36,5 +36,8 @@ const ResumeSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+ResumeSchema.index({ userId: 1, version: -1 });
+ResumeSchema.index({ userId: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Resume', ResumeSchema);

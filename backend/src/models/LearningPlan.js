@@ -4,7 +4,7 @@ const DayTaskSchema = new mongoose.Schema({ day: String, task: String }, { _id: 
 
 const LearningPlanSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true, index: true },
     days: { type: [DayTaskSchema], default: [] },
   },
   { timestamps: true }

@@ -15,6 +15,7 @@
     "dev": "concurrently --names \"API,WEB\" --prefix-colors \"cyan,magenta\" \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\"",
     "build": "npm run build --workspace=frontend",
     "test": "npm run test --workspace=backend",
+    "migrate:indexes": "npm run migrate:indexes --workspace=backend",
     "install:all": "npm install",
     "check:apis": "node backend/scripts/checkApis.js",
     "seed": "npm run seed --workspace=backend",
