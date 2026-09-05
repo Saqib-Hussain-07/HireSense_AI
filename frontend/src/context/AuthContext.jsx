@@ -22,25 +22,16 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, []);
 
-  async function signup(name, email, password) {
-    const data = await api.signup({ name, email, password });
-    localStorage.setItem('hiresense_token', data.token);
-    setUser(data.user);
-  }
-
-  async function login(email, password) {
-    const data = await api.login({ email, password });
-    localStorage.setItem('hiresense_token', data.token);
-    setUser(data.user);
-  }
-
   function logout() {
     localStorage.removeItem('hiresense_token');
     setUser(null);
+    if (typeof window !== 'undefined' && window.Clerk?.signOut) {
+      window.Clerk.signOut();
+    }
   }
 
   return (
-    <AuthContext.Provider value={{ user, setUser, loading, signup, login, logout }}>
+    <AuthContext.Provider value={{ user, setUser, loading, logout }}>
       {children}
     </AuthContext.Provider>
   );

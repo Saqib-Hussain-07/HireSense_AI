@@ -19,26 +19,47 @@ const learningPlanRoutes = require('./routes/learningPlan');
 const githubRoutes = require('./routes/github');
 const companyQuestionsRoutes = require('./routes/companyQuestions');
 const packsRoutes = require('./routes/packs');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const { authLimiter, aiLimiter, generalLimiter } = require('./middleware/rateLimiters');
 
 const app = express();
+
+// Security headers hardening
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+    contentSecurityPolicy: false, // API server returning JSON & media
+  })
+);
+
+// HTTP request logging (dev colored output in development; combined in production; muted in tests)
+const logFormat = process.env.NODE_ENV === 'production' ? 'combined' : 'dev';
+app.use(morgan(logFormat, { skip: () => process.env.NODE_ENV === 'test' }));
 
 const DEFAULT_ORIGIN = process.env.NODE_ENV === 'production' ? false : 'http://localhost:5173';
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || DEFAULT_ORIGIN }));
 app.use(express.json({ limit: '10mb' }));
 
+// Global baseline rate limiter for API routes
+app.use('/api', generalLimiter);
+
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 
-app.use('/api/auth', authRoutes);
+// Auth limiter on sensitive authentication routes
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/profile', profileRoutes);
-app.use('/api/resume', resumeRoutes);
-app.use('/api/jd', jdRoutes);
+
+// AI limiter on expensive reasoning & file processing routes
+app.use('/api/resume', aiLimiter, resumeRoutes);
+app.use('/api/jd', aiLimiter, jdRoutes);
 app.use('/api/match', matchRoutes);
-app.use('/api/interview', interviewRoutes);
+app.use('/api/interview', aiLimiter, interviewRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/weakness-tracker', weaknessTrackerRoutes);
-app.use('/api/learning-plan', learningPlanRoutes);
-app.use('/api/github', githubRoutes);
+app.use('/api/learning-plan', aiLimiter, learningPlanRoutes);
+app.use('/api/github', aiLimiter, githubRoutes);
 app.use('/api/company-questions', companyQuestionsRoutes);
 app.use('/api/packs', packsRoutes);
 

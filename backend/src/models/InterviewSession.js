@@ -60,6 +60,13 @@ const QuestionSchema = new mongoose.Schema(
     timedOut: { type: Boolean, default: false },
     // turn-level state used for silence timeout handling (45s nudge / 90s auto-advance)
     silenceNudgedAt: { type: Date, default: null },
+    // turn-level distributed scoring status (unanswered -> scoring -> scored / failed)
+    scoringStatus: {
+      type: String,
+      enum: ['unanswered', 'scoring', 'scored', 'failed'],
+      default: 'unanswered',
+    },
+    scoringStartedAt: { type: Date, default: null },
     sentiment: { type: String, default: 'neutral' },
     engagement: { type: Number, default: 0 },
     confidenceScore: { type: Number, default: 0 },

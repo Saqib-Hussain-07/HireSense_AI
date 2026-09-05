@@ -15,7 +15,7 @@ import { api } from '../lib/api.js';
  */
 export function useClerkBridge() {
   const { getToken, isSignedIn: clerkSignedIn } = useClerkAuth();
-  const { isLoaded: clerkLoaded } = useUser();
+  const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
   const { setUser } = useLocalAuth();
   const syncedRef = useRef(false);
 
@@ -29,13 +29,17 @@ export function useClerkBridge() {
       return;
     }
 
-    if (syncedRef.current) return;
+    if (syncedRef.current && localStorage.getItem('hiresense_token')) return;
 
     async function syncWithBackend() {
       try {
         const sessionToken = await getToken();
         if (!sessionToken) return;
-        const data = await api.clerkSession(sessionToken);
+
+        const email = clerkUser?.primaryEmailAddress?.emailAddress;
+        const name = clerkUser?.fullName || clerkUser?.firstName || (email ? email.split('@')[0] : 'User');
+
+        const data = await api.clerkSession({ sessionToken, email, name });
         if (data?.token) {
           localStorage.setItem('hiresense_token', data.token);
           setUser(data.user);
@@ -47,5 +51,6 @@ export function useClerkBridge() {
     }
 
     syncWithBackend();
-  }, [clerkLoaded, clerkSignedIn, getToken, setUser]);
+  }, [clerkLoaded, clerkSignedIn, clerkUser, getToken, setUser]);
 }
+

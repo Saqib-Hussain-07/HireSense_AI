@@ -24,17 +24,17 @@
  */
 
 const { WebSocketServer } = require('ws');
-const jwt = require('jsonwebtoken');
 const InterviewSession = require('../models/InterviewSession');
+const { resolveUserFromToken } = require('../middleware/auth');
 const { scoreAnswer } = require('./scoringEngine');
 const { getNextFollowUp, maybePushback } = require('./followUpEngine');
+const { acquireLock, releaseLock } = require('./distributedLock');
 
 const SOFT_NUDGE_MS = 45 * 1000;
 const AUTO_ADVANCE_MS = 90 * 1000;
 
 function attachWsGateway(httpServer) {
   const wss = new WebSocketServer({ noServer: true });
-  const activeScoring = new Set();
 
   httpServer.on('upgrade', (req, socket, head) => {
     const match = req.url.match(/^\/ws\/interview\/([a-fA-F0-9]{24})(\?.*)?$/);
@@ -52,8 +52,8 @@ function attachWsGateway(httpServer) {
     try {
       const url = new URL(req.url, 'http://localhost');
       const token = url.searchParams.get('token');
-      const payload = jwt.verify(token, process.env.JWT_SECRET);
-      userId = payload.userId;
+      userId = await resolveUserFromToken(token);
+      if (!userId) throw new Error('Unauthorized');
     } catch (err) {
       ws.send(JSON.stringify({ type: 'error', message: 'Unauthorized: invalid or missing token' }));
       ws.close();
@@ -99,12 +99,57 @@ function attachWsGateway(httpServer) {
       }, SOFT_NUDGE_MS);
     }
 
-    // Send the current/first unanswered question to kick things off, and
-    // support Session Resume by picking up at currentQuestionIndex.
+    // Send the current question/status to kick things off and
+    // support Session Resume across instance restarts and reconnects.
     const startIndex = Math.min(session.currentQuestionIndex, session.questions.length - 1);
-    if (session.questions[startIndex]) {
-      ws.send(JSON.stringify({ type: 'question', questionIndex: startIndex, text: session.questions[startIndex].questionText, persona: session.questions[startIndex].persona || session.persona }));
-      armSilenceTimers(startIndex);
+    const startQ = session.questions[startIndex];
+    if (startQ) {
+      if (startQ.scoringStatus === 'scoring') {
+        ws.send(
+          JSON.stringify({
+            type: 'scoring_in_progress',
+            questionIndex: startIndex,
+            text: startQ.questionText,
+            message: 'Evaluation is in progress across cluster…',
+          })
+        );
+      } else if (startQ.scoringStatus === 'scored') {
+        ws.send(
+          JSON.stringify({
+            type: 'scored',
+            questionIndex: startIndex,
+            result: {
+              rubricScores: startQ.rubricScores,
+              finalScore: startQ.finalScore,
+              idealAnswer: startQ.idealAnswer,
+              gapNotes: startQ.gapNotes,
+              evidenceQuotes: startQ.evidenceQuotes,
+              starCheck: startQ.starCheck,
+              sentiment: startQ.sentiment,
+              engagement: startQ.engagement,
+              confidenceScore: startQ.confidenceScore,
+              jargonHighlights: startQ.jargonHighlights,
+            },
+          })
+        );
+        if (startQ.pushback) {
+          ws.send(JSON.stringify({ type: 'pushback', questionIndex: startIndex, text: startQ.pushback }));
+        } else if (startQ.followUps && startQ.followUps.length > 0) {
+          const lastFollowUp = startQ.followUps[startQ.followUps.length - 1];
+          ws.send(JSON.stringify({ type: 'followup', questionIndex: startIndex, text: lastFollowUp.q }));
+        }
+        armSilenceTimers(startIndex);
+      } else {
+        ws.send(
+          JSON.stringify({
+            type: 'question',
+            questionIndex: startIndex,
+            text: startQ.questionText,
+            persona: startQ.persona || session.persona,
+          })
+        );
+        armSilenceTimers(startIndex);
+      }
     }
 
     ws.on('message', async (raw) => {
@@ -130,14 +175,23 @@ function attachWsGateway(httpServer) {
         const q = session.questions[questionIndex];
         if (!q) return ws.send(JSON.stringify({ type: 'error', message: 'Invalid questionIndex' }));
 
-        const scoringKey = `${sessionId}_${questionIndex}`;
-        if (activeScoring.has(scoringKey)) {
-          console.warn(`[wsGateway] Scoring already in progress for key: ${scoringKey}`);
+        const scoringKey = `scoring:${sessionId}:${questionIndex}`;
+        const { acquired, lockId } = await acquireLock(scoringKey, 60000);
+        if (!acquired) {
+          console.warn(`[wsGateway] Scoring already in progress across cluster for key: ${scoringKey}`);
+          ws.send(
+            JSON.stringify({
+              type: 'scoring_in_progress',
+              questionIndex,
+              message: 'Evaluation is currently being processed by another cluster instance.',
+            })
+          );
           return;
         }
-        activeScoring.add(scoringKey);
 
         q.answerTranscript = text || q.answerTranscript;
+        q.scoringStatus = 'scoring';
+        q.scoringStartedAt = new Date();
         q.followUps = [];
         q.pushback = null;
         await session.save(); // auto-save after every turn (blueprint reliability rule)
@@ -151,6 +205,7 @@ function attachWsGateway(httpServer) {
             persona: q.persona || session.persona,
             sessionType: session.type,
           });
+          q.scoringStatus = 'scored';
           q.rubricScores = result.rubricScores;
           q.finalScore = result.finalScore;
           q.idealAnswer = result.idealAnswer;
@@ -163,7 +218,9 @@ function attachWsGateway(httpServer) {
           q.jargonHighlights = result.jargonHighlights;
           await session.save();
 
-          ws.send(JSON.stringify({ type: 'scored', questionIndex, result }));
+          if (ws.readyState === ws.OPEN) {
+            ws.send(JSON.stringify({ type: 'scored', questionIndex, result }));
+          }
 
           const shortHistory = session.questions.slice(0, questionIndex).map((qq) => ({ q: qq.questionText, a: qq.answerTranscript?.slice(0, 200) }));
           const { followUpText, tier } = await getNextFollowUp({
@@ -178,17 +235,25 @@ function attachWsGateway(httpServer) {
           if (pushback) {
             q.pushback = pushback;
             await session.save();
-            ws.send(JSON.stringify({ type: 'pushback', questionIndex, text: pushback }));
+            if (ws.readyState === ws.OPEN) {
+              ws.send(JSON.stringify({ type: 'pushback', questionIndex, text: pushback }));
+            }
           } else if (followUpText) {
             q.followUps.push({ q: followUpText, aTranscript: '' });
             await session.save();
-            ws.send(JSON.stringify({ type: 'followup', questionIndex, text: followUpText, tier }));
+            if (ws.readyState === ws.OPEN) {
+              ws.send(JSON.stringify({ type: 'followup', questionIndex, text: followUpText, tier }));
+            }
           }
         } catch (aiErr) {
           console.error('[wsGateway] scoring/follow-up failed:', aiErr.message);
-          ws.send(JSON.stringify({ type: 'error', message: 'AI evaluation temporarily unavailable, please retry your answer.' }));
+          q.scoringStatus = 'failed';
+          await session.save();
+          if (ws.readyState === ws.OPEN) {
+            ws.send(JSON.stringify({ type: 'error', message: 'AI evaluation temporarily unavailable, please retry your answer.' }));
+          }
         } finally {
-          activeScoring.delete(scoringKey);
+          await releaseLock(scoringKey, lockId);
         }
 
         armSilenceTimers(questionIndex);
@@ -201,7 +266,15 @@ function attachWsGateway(httpServer) {
         session.currentQuestionIndex = nextIndex;
         await session.save();
         if (nextIndex < session.questions.length) {
-          ws.send(JSON.stringify({ type: 'question', questionIndex: nextIndex, text: session.questions[nextIndex].questionText, persona: session.questions[nextIndex].persona || session.persona }));
+          const nextQ = session.questions[nextIndex];
+          ws.send(
+            JSON.stringify({
+              type: 'question',
+              questionIndex: nextIndex,
+              text: nextQ.questionText,
+              persona: nextQ.persona || session.persona,
+            })
+          );
           armSilenceTimers(nextIndex);
         } else {
           ws.send(JSON.stringify({ type: 'session_complete' }));

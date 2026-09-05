@@ -5,9 +5,21 @@ function getToken() {
   return localStorage.getItem('hiresense_token');
 }
 
+async function getAuthToken() {
+  if (typeof window !== 'undefined' && window.Clerk?.session) {
+    try {
+      const clerkToken = await window.Clerk.session.getToken();
+      if (clerkToken) return clerkToken;
+    } catch (_e) {
+      // ignore
+    }
+  }
+  return getToken();
+}
+
 async function request(path, { method = 'GET', body, isForm = false } = {}) {
   const headers = {};
-  const token = getToken();
+  const token = await getAuthToken();
   if (token) headers.Authorization = `Bearer ${token}`;
   if (!isForm) headers['Content-Type'] = 'application/json';
 
@@ -28,10 +40,10 @@ async function request(path, { method = 'GET', body, isForm = false } = {}) {
 }
 
 export const api = {
-  signup: (body) => request('/auth/signup', { method: 'POST', body }),
-  login: (body) => request('/auth/login', { method: 'POST', body }),
-  googleAuth: (idToken) => request('/auth/google', { method: 'POST', body: { idToken } }),
-  clerkSession: (sessionToken) => request('/auth/clerk-session', { method: 'POST', body: { sessionToken } }),
+  clerkSession: (payload) => {
+    const body = typeof payload === 'string' ? { sessionToken: payload } : payload;
+    return request('/auth/clerk-session', { method: 'POST', body });
+  },
 
   getProfile: () => request('/profile'),
   updateProfile: (body) => request('/profile', { method: 'PUT', body }),
@@ -84,8 +96,8 @@ export const api = {
   createPack: (body) => request('/packs', { method: 'POST', body }),
 };
 
-export function wsUrl(sessionId) {
-  const token = getToken();
+export function wsUrl(sessionId, overrideToken) {
+  const token = overrideToken || getToken() || '';
   if (API_URL) {
     const urlObj = new URL(API_URL);
     const wsProtocol = urlObj.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -95,4 +107,4 @@ export function wsUrl(sessionId) {
   return `${protocol}//${window.location.host}/ws/interview/${sessionId}?token=${token}`;
 }
 
-export { getToken };
+export { getToken, getAuthToken };

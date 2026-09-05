@@ -4,9 +4,7 @@ const UserSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    passwordHash: { type: String }, // absent for Google/Clerk-only accounts
-    googleId: { type: String },
-    clerkId: { type: String, sparse: true }, // absent for password-only accounts
+    clerkId: { type: String, sparse: true, unique: true, index: true },
     college: { type: String, default: '' },
     degree: { type: String, default: '' },
     gradYear: { type: Number },

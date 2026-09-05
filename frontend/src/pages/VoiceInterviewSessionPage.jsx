@@ -210,6 +210,9 @@ export default function VoiceInterviewSessionPage() {
       pushAI(nudgeText);
       speak(nudgeText);
     },
+    scoring_in_progress: () => {
+      setLastResult(null);
+    },
     auto_advance: () => setNudge(false),
     session_complete: () => setComplete(true),
     error: (msg) => console.error('[interview ws error]', msg.message),

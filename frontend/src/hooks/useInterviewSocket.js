@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { wsUrl } from '../lib/api';
+import { wsUrl, getAuthToken } from '../lib/api';
 
 const MAX_RETRIES   = 8;
 const BASE_DELAY_MS = 500; // doubles each attempt, caps at ~30s
@@ -19,8 +19,10 @@ export function useInterviewSocket(sessionId, handlers) {
     shouldReconnect.current = true;
     retriesRef.current = 0;
 
-    function connect() {
-      const ws = new WebSocket(wsUrl(sessionId));
+    async function connect() {
+      const token = await getAuthToken();
+      if (!shouldReconnect.current) return;
+      const ws = new WebSocket(wsUrl(sessionId, token));
       wsRef.current = ws;
 
       ws.onopen = () => {
