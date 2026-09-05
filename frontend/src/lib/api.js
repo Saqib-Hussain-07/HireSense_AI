@@ -70,7 +70,6 @@ export const api = {
   getLatestMatch: () => request('/match/latest'),
 
   generateInterview: (body) => request('/interview/generate', { method: 'POST', body }),
-  generateInterviewFromPack: (body) => request('/interview/generate-from-pack', { method: 'POST', body }),
   getInterview: (id) => request(`/interview/${id}`),
   answerInterview: (id, body) => request(`/interview/${id}/answer`, { method: 'POST', body }),
   followupInterview: (id, body) => request(`/interview/${id}/followup`, { method: 'POST', body }),
@@ -84,17 +83,6 @@ export const api = {
   getWeaknessTracker: () => request('/weakness-tracker'),
   getLearningPlan: () => request('/learning-plan'),
   analyzeGithub: (repoUrl) => request('/github/analyze', { method: 'POST', body: { repoUrl } }),
-  getCompanyQuestions: (params = {}) => {
-    const qs = new URLSearchParams(params).toString();
-    return request(`/company-questions${qs ? `?${qs}` : ''}`);
-  },
-  submitCompanyQuestion: (body) => request('/company-questions', { method: 'POST', body }),
-
-  getPacks: (params = {}) => {
-    const qs = new URLSearchParams(params).toString();
-    return request(`/packs${qs ? `?${qs}` : ''}`);
-  },
-  createPack: (body) => request('/packs', { method: 'POST', body }),
 };
 
 export function wsUrl(sessionId, overrideToken) {

@@ -45,21 +45,22 @@ const FEATURES = [
   {
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white">
-        <rect x="2" y="10" width="20" height="12" rx="2" ry="2" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M12 22V10M17 22V14M7 22V14M4 10V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M9 11l3 3L22 4" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
-    title: 'Company Questions Bank',
-    desc: 'Crowdsourced bank of actual interview questions asked at top companies like Google, Stripe, Meta, and others.',
+    title: 'Deterministic ATS Scoring',
+    desc: 'Transparent 5-dimension ATS benchmark computed in code, detecting low text-density scanned PDFs and measuring quantified impact.',
   },
   {
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-white">
-        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" strokeLinecap="round" strokeLinejoin="round"/>
+        <circle cx="11" cy="11" r="8" strokeLinecap="round" strokeLinejoin="round"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
-    title: 'Curated Question Packs',
-    desc: 'Practice targeted question pools grouped by core categories (System Design, Frontend, Backend, Behavioral, etc.).',
+    title: 'Dynamic JD Match Engine',
+    desc: 'Seamlessly re-evaluate any uploaded resume against newly analyzed job postings on-demand, calculating tailored skill match percentages.',
   },
   {
     icon: (

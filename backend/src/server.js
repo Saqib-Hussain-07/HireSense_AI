@@ -17,8 +17,6 @@ const dashboardRoutes = require('./routes/dashboard');
 const weaknessTrackerRoutes = require('./routes/weaknessTracker');
 const learningPlanRoutes = require('./routes/learningPlan');
 const githubRoutes = require('./routes/github');
-const companyQuestionsRoutes = require('./routes/companyQuestions');
-const packsRoutes = require('./routes/packs');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const { authLimiter, aiLimiter, generalLimiter } = require('./middleware/rateLimiters');
@@ -60,8 +58,6 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/weakness-tracker', weaknessTrackerRoutes);
 app.use('/api/learning-plan', aiLimiter, learningPlanRoutes);
 app.use('/api/github', aiLimiter, githubRoutes);
-app.use('/api/company-questions', companyQuestionsRoutes);
-app.use('/api/packs', packsRoutes);
 
 // Centralized error handler as a safety net for anything routes don't catch.
 app.use((err, req, res, next) => {

@@ -20,10 +20,6 @@ const SessionReportPage = lazy(() => import("./pages/SessionReportPage.jsx"));
 const HistoryPage = lazy(() => import("./pages/HistoryPage.jsx"));
 const GrowthPage = lazy(() => import("./pages/GrowthPage.jsx"));
 const GithubAnalyzerPage = lazy(() => import("./pages/GithubAnalyzerPage.jsx"));
-const CompanyQuestionsPage = lazy(
-  () => import("./pages/CompanyQuestionsPage.jsx"),
-);
-const PacksPage = lazy(() => import("./pages/PacksPage.jsx"));
 
 function WithShell({ children }) {
   return (
@@ -144,22 +140,6 @@ export default function App() {
           element={
             <WithShell>
               <GithubAnalyzerPage />
-            </WithShell>
-          }
-        />
-        <Route
-          path="/company-questions"
-          element={
-            <WithShell>
-              <CompanyQuestionsPage />
-            </WithShell>
-          }
-        />
-        <Route
-          path="/packs"
-          element={
-            <WithShell>
-              <PacksPage />
             </WithShell>
           }
         />

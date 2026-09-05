@@ -12,8 +12,6 @@ const { getNextFollowUp, maybePushback } = require('../services/followUpEngine')
 const { textToSpeech } = require('../services/voiceAdapter');
 const { updateWeaknessTracker } = require('../services/weaknessEngine');
 const { generatePanelQuestions } = require('../services/panelEngine');
-const { buildQuestionsFromPack } = require('../services/packEngine');
-const InterviewPack = require('../models/InterviewPack');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -89,36 +87,6 @@ router.post('/generate', async (req, res) => {
     res.status(201).json(session);
   } catch (err) {
     res.status(500).json({ error: 'Interview generation failed', detail: err.message });
-  }
-});
-
-// POST /api/interview/generate-from-pack  { packId, targetCount? }
-// Company-specific interview pack (blueprint Phase 3): builds the question
-// set from real Company Question Bank entries first, topped up with AI.
-router.post('/generate-from-pack', async (req, res) => {
-  try {
-    const { packId, targetCount = 6 } = req.body;
-    if (!packId) return res.status(400).json({ error: 'packId is required' });
-
-    const pack = await InterviewPack.findById(packId);
-    if (!pack) return res.status(404).json({ error: 'Pack not found' });
-
-    const { questions, effectiveType, effectiveDifficulty, effectivePersona } = await buildQuestionsFromPack(pack, { targetCount });
-
-    const session = await InterviewSession.create({
-      userId: req.userId,
-      type: effectiveType,
-      persona: effectivePersona,
-      mode: 'coaching',
-      difficulty: effectiveDifficulty,
-      status: 'in_progress',
-      currentQuestionIndex: 0,
-      questions: questions.map((q) => ({ questionText: q.questionText })),
-    });
-
-    res.status(201).json({ session, questionSources: questions.map((q) => q.source) });
-  } catch (err) {
-    res.status(500).json({ error: 'Pack-based interview generation failed', detail: err.message });
   }
 });
 

@@ -54,24 +54,6 @@ const IconGithub = () => (
   </svg>
 );
 
-const IconCompany = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="2" y="10" width="20" height="12" rx="2" ry="2" />
-    <path d="M12 22V10" />
-    <path d="M17 22V14" />
-    <path d="M7 22V14" />
-    <path d="M4 10V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6" />
-  </svg>
-);
-
-const IconPacks = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 2L2 7l10 5 10-5-10-5z" />
-    <path d="M2 17l10 5 10-5" />
-    <path d="M2 12l10 5 10-5" />
-  </svg>
-);
-
 const IconHistory = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="10" />
@@ -88,10 +70,8 @@ const NAV_MAIN = [
 ];
 
 const NAV_SECONDARY = [
-  { to: '/github',            label: 'GitHub Analyzer',  icon: IconGithub   },
-  { to: '/company-questions', label: 'Company Qs',       icon: IconCompany  },
-  { to: '/packs',             label: 'Question Packs',   icon: IconPacks    },
-  { to: '/resume',            label: 'Profile & Resume', icon: IconProfile  },
+  { to: '/github', label: 'GitHub Analyzer',  icon: IconGithub   },
+  { to: '/resume', label: 'Profile & Resume', icon: IconProfile  },
 ];
 
 /* ── Logo icon ─────────────────────────────────────────────────────────── */

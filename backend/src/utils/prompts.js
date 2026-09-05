@@ -256,23 +256,6 @@ Return JSON matching this schema:
   };
 }
 
-// Interview Packs (blueprint Phase 3) — top up a company pack's real
-// crowd-sourced questions with AI-generated ones when the bank is thin,
-// explicitly avoiding duplicates of what's already been pulled in.
-function packTopUpPrompt({ company, type, difficulty, persona, existingQuestions, neededCount }) {
-  return {
-    system: `You generate additional interview questions for a specific company, in the style of: ${persona}. Return JSON only.`,
-    prompt: `Company: ${company}
-Interview type: ${type}
-Difficulty: ${difficulty}
-Questions already selected for this session (do NOT repeat or closely paraphrase these):
-${JSON.stringify(existingQuestions)}
-
-Generate ${neededCount} NEW interview questions plausible for a ${company} ${type} interview at ${difficulty} difficulty.
-Return JSON only: {"questions": ["...", "..."]}`,
-  };
-}
-
 module.exports = {
   resumeAnalyzePrompt,
   jdExtractPrompt,
@@ -286,5 +269,4 @@ module.exports = {
   weaknessTopicExtractPrompt,
   learningPlanPrompt,
   githubQuestionsPrompt,
-  packTopUpPrompt,
 };
