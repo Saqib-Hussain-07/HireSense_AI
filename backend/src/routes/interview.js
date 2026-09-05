@@ -158,6 +158,8 @@ router.post('/:id/answer', async (req, res) => {
     q.gapNotes = result.gapNotes;
     q.evidenceQuotes = result.evidenceQuotes;
     if (result.starCheck) q.starCheck = result.starCheck;
+    if (result.pushback) q.pushback = result.pushback;
+    if (result.followUp) q.followUps.push({ q: result.followUp, aTranscript: '' });
 
     session.currentQuestionIndex = Math.min(questionIndex + 1, session.questions.length);
     await session.save();

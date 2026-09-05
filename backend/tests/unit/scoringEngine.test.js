@@ -192,4 +192,31 @@ describe('scoreAnswer', () => {
     expect(result.verdict).toBe('Hold');
     expect(result.confidenceScore).toBeGreaterThanOrEqual(70);
   });
+
+  test('unifies followUp and pushback into single-call evaluation output', async () => {
+    callAI.mockResolvedValue({
+      data: {
+        scores: { relevance: 4, structure: 4, technicalAccuracy: 3, businessThinking: 4, creativity: 3 },
+        followUp: 'How would your architecture scale when write throughput spikes by 10x?',
+        pushback: 'You claimed Redis guarantees 100% durability, but in default async replication can writes be dropped on failover?',
+        sentiment: 'confident',
+        idealAnswer: 'Ideal model answer.',
+      },
+    });
+
+    const result = await scoreAnswer({
+      question: 'How do you design a caching layer?',
+      answerTranscript: 'We use Redis in front of PostgreSQL for fast key-value lookups with zero data loss.',
+      targetRole: 'Backend Engineer',
+      mode: 'coaching',
+      sessionType: 'technical',
+      shortHistory: [{ q: 'Tell me about yourself', a: 'I am a backend dev.' }],
+    });
+
+    expect(result.followUp).toBe('How would your architecture scale when write throughput spikes by 10x?');
+    expect(result.pushback).toBe('You claimed Redis guarantees 100% durability, but in default async replication can writes be dropped on failover?');
+    // (8 + 8 + 6 + 8 + 6) / 5 = 36 / 5 = 7.2 -> finalScore: 7
+    expect(result.finalScore).toBe(7);
+    expect(result.verdict).toBe('Hold');
+  });
 });

@@ -197,6 +197,7 @@ function attachWsGateway(httpServer) {
         await session.save(); // auto-save after every turn (blueprint reliability rule)
 
         try {
+          const shortHistory = session.questions.slice(0, questionIndex).map((qq) => ({ q: qq.questionText, a: qq.answerTranscript?.slice(0, 200) }));
           const result = await scoreAnswer({
             question: q.questionText,
             answerTranscript: q.answerTranscript,
@@ -204,10 +205,12 @@ function attachWsGateway(httpServer) {
             durationSeconds,
             persona: q.persona || session.persona,
             sessionType: session.type,
+            shortHistory,
           });
           q.scoringStatus = 'scored';
           q.rubricScores = result.rubricScores;
           q.finalScore = result.finalScore;
+          if (result.verdict) q.verdict = result.verdict;
           q.idealAnswer = result.idealAnswer;
           q.gapNotes = result.gapNotes;
           q.evidenceQuotes = result.evidenceQuotes;
@@ -216,33 +219,22 @@ function attachWsGateway(httpServer) {
           q.engagement = result.engagement;
           q.confidenceScore = result.confidenceScore;
           q.jargonHighlights = result.jargonHighlights;
+
+          // Single-pass conversational next steps (zero extra LLM calls)
+          if (result.pushback) {
+            q.pushback = result.pushback;
+          } else if (result.followUp) {
+            q.followUps.push({ q: result.followUp, aTranscript: '' });
+          }
+
           await session.save();
 
           if (ws.readyState === ws.OPEN) {
             ws.send(JSON.stringify({ type: 'scored', questionIndex, result }));
-          }
-
-          const shortHistory = session.questions.slice(0, questionIndex).map((qq) => ({ q: qq.questionText, a: qq.answerTranscript?.slice(0, 200) }));
-          const { followUpText, tier } = await getNextFollowUp({
-            lastAnswerTranscript: q.answerTranscript,
-            shortHistory,
-            persona: q.persona || session.persona,
-            sentiment: q.sentiment,
-            engagement: q.engagement,
-          });
-          const { pushback } = await maybePushback({ claim: q.answerTranscript, persona: q.persona || session.persona });
-
-          if (pushback) {
-            q.pushback = pushback;
-            await session.save();
-            if (ws.readyState === ws.OPEN) {
-              ws.send(JSON.stringify({ type: 'pushback', questionIndex, text: pushback }));
-            }
-          } else if (followUpText) {
-            q.followUps.push({ q: followUpText, aTranscript: '' });
-            await session.save();
-            if (ws.readyState === ws.OPEN) {
-              ws.send(JSON.stringify({ type: 'followup', questionIndex, text: followUpText, tier }));
+            if (result.pushback) {
+              ws.send(JSON.stringify({ type: 'pushback', questionIndex, text: result.pushback }));
+            } else if (result.followUp) {
+              ws.send(JSON.stringify({ type: 'followup', questionIndex, text: result.followUp, tier: 'unified_followup' }));
             }
           }
         } catch (aiErr) {

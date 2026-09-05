@@ -23,12 +23,16 @@ const PRIMARY_TIMEOUT_MS = 25000;
 // 1. Explicit override via GEMINI_MODEL env var
 // 2. gemini-2.0-flash (Full flash model: high reasoning capability and rubric adherence)
 // 3. gemini-1.5-flash (Universal, stable production baseline)
-// 4. gemini-2.0-flash-lite / gemini-flash-lite-latest (Lite emergency fallbacks)
+// 4. gemini-2.0-flash-lite (Fast lite model)
+// 5. gemini-3.1-flash-lite-preview / gemini-3-flash-preview (Preview tier if available on key)
+// 6. gemini-flash-lite-latest (Alias fallback)
 const GEMINI_MODELS = [
   process.env.GEMINI_MODEL,
   'gemini-2.0-flash',
   'gemini-1.5-flash',
   'gemini-2.0-flash-lite',
+  'gemini-3.1-flash-lite-preview',
+  'gemini-3-flash-preview',
   'gemini-flash-lite-latest',
 ].filter(Boolean);
 
@@ -165,15 +169,17 @@ async function callGroqFallback({ system, prompt, temperature }) {
  * @returns {Promise<string|object>}
  */
 async function callAI({ system = '', prompt, jsonOnly = false, temperature = undefined }) {
+  // Enforce deterministic 0.2 temperature on all JSON/scoring calls unless explicitly specified
+  const effectiveTemp = typeof temperature === 'number' ? temperature : (jsonOnly ? 0.2 : 0.7);
   let rawText;
   let usedProvider = 'primary';
   try {
-    rawText = await withTimeout(callGemini({ system, prompt, temperature }), PRIMARY_TIMEOUT_MS);
+    rawText = await withTimeout(callGemini({ system, prompt, temperature: effectiveTemp }), PRIMARY_TIMEOUT_MS);
   } catch (primaryErr) {
     console.warn('[aiAdapter] primary provider failed, falling back:', primaryErr.message);
     usedProvider = 'fallback';
     try {
-      rawText = await withTimeout(callGroqFallback({ system, prompt, temperature }), PRIMARY_TIMEOUT_MS);
+      rawText = await withTimeout(callGroqFallback({ system, prompt, temperature: effectiveTemp }), PRIMARY_TIMEOUT_MS);
     } catch (fallbackErr) {
       console.error('[aiAdapter] fallback provider also failed:', fallbackErr.message);
       throw new Error('AI_UNAVAILABLE: both primary and fallback reasoning providers failed');

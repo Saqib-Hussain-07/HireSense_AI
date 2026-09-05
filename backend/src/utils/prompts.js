@@ -60,18 +60,18 @@ function interviewGeneratePrompt({ resumeParsed, jdParsed, type, difficulty, per
 }
 
 // Section 9.1
-function rubricScoringPrompt({ question, answerTranscript, targetRole, company, mode, persona, sessionType }) {
+function rubricScoringPrompt({ question, answerTranscript, targetRole, company, mode, persona, sessionType, shortHistory = [] }) {
   const personaPrefix = persona ? `${personaSystemPrompt(persona)}\n\n` : '';
   const isBehavioral = sessionType === 'behavioral';
   return {
-    system: `${personaPrefix}You are an expert interviewer scoring one answer against a grounded assessment rubric. Return JSON only, with no markdown preamble.`,
+    system: `${personaPrefix}You are an expert interviewer scoring a candidate answer and deciding on conversational next steps. Maintain your persona tone throughout. Return JSON only, with no markdown preamble.`,
     prompt: `You are evaluating this candidate's interview answer.
 
 Question: ${question}
 Candidate Answer (transcribed): "${answerTranscript}"
 Role Context: ${targetRole || 'General Engineering'}, Company: ${company || 'Technology Company'}
 Mode: ${mode}
-
+${shortHistory && shortHistory.length ? `Prior Q&A Context: ${JSON.stringify(shortHistory)}\n` : ''}
 Evaluate each dimension strictly on a 1 to 5 integer scale using these clear qualitative bands:
 - 1 (Poor): Fundamentally incorrect, off-topic, evasive, or unorganized.
 - 2 (Needs Improvement): Partial answer, notable conceptual/technical errors, or weak justification.
@@ -90,6 +90,10 @@ STAR Method Components (Behavioral):
 - starCheck: Classify whether each STAR component (situation, task, action, result) is present (true/false) in the candidate's answer, and note which component was weakest or missing.
 ` : ''}
 ${mode === 'neutral_assessment' ? 'Omit encouraging language entirely; report only factual scores, gaps, and evidence.' : ''}
+
+Conversational Next Steps (Spoken by Interviewer):
+- followUp: ONE natural spoken follow-up question (1 concise sentence) probing deeper into an omitted tradeoff, edge case, or clarifying an ambiguous claim from their answer. If candidate answer was comprehensive and needs no follow-up, or if candidate answered "skip", return null.
+- pushback: If candidate made a technically debatable, overconfident, or architecturally questionable claim, provide ONE brief spoken counter-question challenging their assertion (in persona tone). If no challenge is warranted, return null.
 
 Feedback & Evidence:
 - sentiment: "confident" | "hesitant" | "anxious" | "neutral"
@@ -115,6 +119,8 @@ Return JSON only in this exact schema:
     "weakest": "result"
   },
   ` : ''}"sentiment": "confident",
+  "followUp": "ONE spoken follow-up question probing deeper, or null",
+  "pushback": "ONE spoken pushback challenge, or null",
   "idealAnswer": "2-3 concise sentences of ideal response",
   "gapNotes": "Specific technical omissions or areas to improve",
   "evidenceQuotes": [{"criterion": "technicalAccuracy", "quote": "exact phrase"}],

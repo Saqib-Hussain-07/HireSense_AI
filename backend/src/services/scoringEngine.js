@@ -61,11 +61,26 @@ function computeDeliveryScore(transcript, durationSeconds) {
   return { deliveryScore, fillerCount, wpm: Math.round(wpm), wordCount };
 }
 
-async function scoreAnswer({ question, answerTranscript, targetRole, company, mode, durationSeconds, persona, sessionType }) {
-  if (!answerTranscript || !answerTranscript.trim()) {
+async function scoreAnswer({
+  question,
+  answerTranscript,
+  targetRole,
+  company,
+  mode = 'coaching',
+  durationSeconds = 0,
+  sessionType = 'technical',
+  persona = 'friendly_mentor',
+  shortHistory = [],
+}) {
+  const clean = (answerTranscript || '').trim();
+  if (!clean) {
     return {
       rubricScores: { relevance: 0, structure: 0, technicalAccuracy: 0, businessThinking: 0, deliveryScore: 0, star: 0, creativity: 0 },
       finalScore: 0,
+      verdict: 'Pass',
+      dimensionAverage: 0,
+      followUp: null,
+      pushback: null,
       idealAnswer: '',
       gapNotes: 'No response was recorded from the candidate.',
       evidenceQuotes: [],
@@ -82,7 +97,7 @@ async function scoreAnswer({ question, answerTranscript, targetRole, company, mo
   const delivery = computeDeliveryScore(answerTranscript, durationSeconds);
 
   const { data } = await callAI({
-    ...rubricScoringPrompt({ question, answerTranscript, targetRole, company, mode, persona, sessionType }),
+    ...rubricScoringPrompt({ question, answerTranscript, targetRole, company, mode, persona, sessionType, shortHistory }),
     jsonOnly: true,
     temperature: 0.2, // Consistent, repeatable assessment scoring (avoids creative drift)
   });
@@ -176,6 +191,8 @@ async function scoreAnswer({ question, answerTranscript, targetRole, company, mo
     finalScore,
     verdict,
     dimensionAverage: parseFloat(dimensionAverage.toFixed(1)),
+    followUp: data.followUp || null,
+    pushback: (data.pushback && data.pushback !== 'NO_PUSHBACK') ? data.pushback : null,
     idealAnswer: data.idealAnswer || '',
     gapNotes: data.gapNotes || '',
     evidenceQuotes: data.evidenceQuotes || [],
