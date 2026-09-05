@@ -19,15 +19,18 @@ const fetch = require('node-fetch');
 
 const PRIMARY_TIMEOUT_MS = 25000;
 
-// Gemini model priority list — tried in order until one succeeds.
-// gemini-flash-lite-latest is an alias that always maps to the most
-// recent lite model without hitting per-model quota buckets as quickly.
+// Gemini model priority list:
+// 1. Explicit override via GEMINI_MODEL env var
+// 2. gemini-2.0-flash (Full flash model: high reasoning capability and rubric adherence)
+// 3. gemini-1.5-flash (Universal, stable production baseline)
+// 4. gemini-2.0-flash-lite / gemini-flash-lite-latest (Lite emergency fallbacks)
 const GEMINI_MODELS = [
-  'gemini-flash-lite-latest',   // alias, highest availability
-  'gemini-2.0-flash-lite-001',  // stable, versioned
-  'gemini-2.0-flash-lite',      // may have quota issues on busy days
-  'gemini-2.0-flash',           // full flash — higher quota cost, last resort
-];
+  process.env.GEMINI_MODEL,
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+  'gemini-2.0-flash-lite',
+  'gemini-flash-lite-latest',
+].filter(Boolean);
 
 async function withTimeout(promise, ms) {
   let timer;
@@ -109,13 +112,15 @@ async function callGemini({ system, prompt, temperature }) {
 async function callGroqFallback({ system, prompt, temperature }) {
   const key = process.env.GROQ_API_KEY;
   if (!key) throw new Error('GROQ_API_KEY not configured');
-  // Try multiple Groq models in order; llama-3.1-8b-instant is fastest but
-  // sometimes rate-limited, llama3-8b-8192 is an older stable alias.
+  // Groq model priority list:
+  // 1. Explicit override via GROQ_MODEL env var
+  // 2. llama-3.3-70b-versatile (Flagship 70B: deep reasoning, accurate rubric evaluation)
+  // 3. llama-3.1-8b-instant (Fast 8B fallback if 70B hits per-minute quota)
   const GROQ_MODELS = [
-    'llama-3.1-8b-instant',
+    process.env.GROQ_MODEL,
     'llama-3.3-70b-versatile',
-    'llama3-8b-8192',
-  ];
+    'llama-3.1-8b-instant',
+  ].filter(Boolean);
   for (const model of GROQ_MODELS) {
     try {
       const payload = {
