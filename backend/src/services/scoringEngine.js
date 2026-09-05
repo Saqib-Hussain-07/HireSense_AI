@@ -104,16 +104,31 @@ async function scoreAnswer({ question, answerTranscript, targetRole, company, mo
   const structure = normalizeScore(rawScores.structure);
   const technicalAccuracy = normalizeScore(rawScores.technicalAccuracy);
   const businessThinking = normalizeScore(rawScores.businessThinking);
-  const starRaw = normalizeScore(rawScores.star);
   const creativity = normalizeScore(rawScores.creativity);
 
-  let star = starRaw;
+  let star = 0;
   let starCheck = null;
   const isBehavioral = sessionType === 'behavioral';
   if (isBehavioral) {
-    starCheck = await detectStar(answerTranscript);
-    const presentCount = ['situation', 'task', 'action', 'result'].filter((k) => starCheck[k]).length;
-    star = Math.round((presentCount / 4) * 10);
+    if (data.starCheck && typeof data.starCheck === 'object') {
+      starCheck = {
+        situation: Boolean(data.starCheck.situation),
+        task: Boolean(data.starCheck.task),
+        action: Boolean(data.starCheck.action),
+        result: Boolean(data.starCheck.result),
+        weakest: data.starCheck.weakest || null,
+      };
+    } else if (typeof detectStar === 'function') {
+      // Fallback only if the unified rubric call did not provide starCheck
+      starCheck = await detectStar(answerTranscript);
+    }
+
+    if (starCheck) {
+      const presentCount = ['situation', 'task', 'action', 'result'].filter((k) => Boolean(starCheck[k])).length;
+      star = Math.round((presentCount / 4) * 10);
+    } else if (rawScores.star !== undefined) {
+      star = normalizeScore(rawScores.star);
+    }
   }
 
   const scores = {

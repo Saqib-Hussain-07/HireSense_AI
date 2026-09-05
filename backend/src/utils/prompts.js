@@ -84,8 +84,11 @@ Categories to grade (integers 1 to 5):
 - structure: Logical organization, narrative clarity, and pacing.
 - technicalAccuracy: Correctness of technical concepts, tools, or principles mentioned.
 - businessThinking: Commercial awareness, user/business impact, or scalability tradeoffs.
-${isBehavioral ? '- star: STAR method structure compliance (Situation, Task, Action, Result).\n' : ''}- creativity: Innovative thinking, custom tradeoffs, or alternatives discussed.
-
+- creativity: Innovative thinking, custom tradeoffs, or alternatives discussed.
+${isBehavioral ? `
+STAR Method Components (Behavioral):
+- starCheck: Classify whether each STAR component (situation, task, action, result) is present (true/false) in the candidate's answer, and note which component was weakest or missing.
+` : ''}
 ${mode === 'neutral_assessment' ? 'Omit encouraging language entirely; report only factual scores, gaps, and evidence.' : ''}
 
 Feedback & Evidence:
@@ -102,9 +105,16 @@ Return JSON only in this exact schema:
     "structure": 3,
     "technicalAccuracy": 3,
     "businessThinking": 3,
-    ${isBehavioral ? '"star": 3,\n    ' : ''}"creativity": 3
+    "creativity": 3
   },
-  "sentiment": "confident",
+  ${isBehavioral ? `"starCheck": {
+    "situation": true,
+    "task": true,
+    "action": true,
+    "result": false,
+    "weakest": "result"
+  },
+  ` : ''}"sentiment": "confident",
   "idealAnswer": "2-3 concise sentences of ideal response",
   "gapNotes": "Specific technical omissions or areas to improve",
   "evidenceQuotes": [{"criterion": "technicalAccuracy", "quote": "exact phrase"}],

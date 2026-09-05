@@ -95,10 +95,33 @@ describe('scoreAnswer', () => {
     ).rejects.toThrow('AI_UNAVAILABLE');
   });
 
-  test('runs STAR detection and folds its completeness into the star rubric slot when sessionType is behavioral', async () => {
+  test('unifies STAR detection from the rubric response into starCheck and computes star score without a redundant second call', async () => {
     callAI.mockResolvedValue({
       data: {
-        scores: { relevance: 15, structure: 10, technicalAccuracy: 0, businessThinking: 5, star: 99, creativity: 3 },
+        scores: { relevance: 3, structure: 3, technicalAccuracy: 3, businessThinking: 3, creativity: 3 },
+        starCheck: { situation: true, task: true, action: false, result: false, weakest: 'action' },
+        idealAnswer: '', gapNotes: '', evidenceQuotes: [], technicalFlags: [],
+      },
+    });
+
+    const result = await scoreAnswer({
+      question: 'Tell me about a time you dealt with conflict.',
+      answerTranscript: 'Some behavioral answer here.',
+      mode: 'coaching',
+      sessionType: 'behavioral',
+    });
+
+    // Unified call supplies starCheck -> detectStar is NOT called (zero wasted calls)
+    expect(detectStar).not.toHaveBeenCalled();
+    // 2 of 4 STAR components present -> star score is 5 (2/4 * 10)
+    expect(result.rubricScores.star).toBe(5);
+    expect(result.starCheck).toEqual({ situation: true, task: true, action: false, result: false, weakest: 'action' });
+  });
+
+  test('falls back to detectStar if rubric response omits starCheck for a behavioral answer', async () => {
+    callAI.mockResolvedValue({
+      data: {
+        scores: { relevance: 3, structure: 3, technicalAccuracy: 3, businessThinking: 3, creativity: 3 },
         idealAnswer: '', gapNotes: '', evidenceQuotes: [], technicalFlags: [],
       },
     });
@@ -112,7 +135,6 @@ describe('scoreAnswer', () => {
     });
 
     expect(detectStar).toHaveBeenCalledWith('Some behavioral answer here.');
-    // 2 of 4 STAR components present -> star score should be 5 (2/4 * 10), NOT the AI's raw 99
     expect(result.rubricScores.star).toBe(5);
     expect(result.starCheck).toEqual({ situation: true, task: true, action: false, result: false, weakest: 'action' });
   });
@@ -120,7 +142,7 @@ describe('scoreAnswer', () => {
   test('does NOT run STAR detection for non-behavioral session types', async () => {
     callAI.mockResolvedValue({
       data: {
-        scores: { relevance: 15, structure: 10, technicalAccuracy: 18, businessThinking: 5, star: 7, creativity: 3 },
+        scores: { relevance: 15, structure: 10, technicalAccuracy: 18, businessThinking: 5, creativity: 3 },
         idealAnswer: '', gapNotes: '', evidenceQuotes: [], technicalFlags: [],
       },
     });
@@ -133,7 +155,7 @@ describe('scoreAnswer', () => {
     });
 
     expect(detectStar).not.toHaveBeenCalled();
-    expect(result.rubricScores.star).toBe(7); // untouched, from the AI response
+    expect(result.rubricScores.star).toBe(0);
     expect(result.starCheck).toBeNull();
   });
 
