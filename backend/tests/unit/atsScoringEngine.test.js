@@ -53,6 +53,38 @@ describe('atsScoringEngine', () => {
       expect(result.hasPhone).toBe(false);
       expect(result.score).toBeLessThanOrEqual(30);
     });
+
+    test('detects scanned/image PDFs when charsPerKB < 2 and flags parseability issue', () => {
+      // 50 characters extracted from a 500 KB image-heavy/scanned PDF -> 0.1 chars/KB
+      const sparseScannedText = 'Scanned document heading with only very few characters';
+      const fileSizeBytes = 500 * 1024;
+      const result = computeFormattingParseability(sparseScannedText, fileSizeBytes, 'application/pdf');
+
+      expect(result.charsPerKB).toBeLessThan(2);
+      expect(result.score).toBe(20);
+      expect(result.issue).toMatch(/Likely a scanned\/image PDF/i);
+    });
+
+    test('validates healthy text density for text-based PDFs', () => {
+      // 2500 characters extracted from a 50 KB text PDF -> ~50 chars/KB
+      const richText = `
+        Jane Developer
+        jane@example.com | 555-123-4567 | github.com/janedev
+        Experience:
+        Senior Software Engineer building scalable microservices and data pipelines.
+        Education:
+        BS Computer Science.
+        Skills:
+        Python, JavaScript, React, Docker, Kubernetes, AWS, PostgreSQL, Redis, Linux, Git.
+        ${'engineered reliable high-throughput microservices '.repeat(100)}
+      `;
+      const fileSizeBytes = 50 * 1024;
+      const result = computeFormattingParseability(richText, fileSizeBytes, 'application/pdf');
+
+      expect(result.charsPerKB).toBeGreaterThanOrEqual(2);
+      expect(result.issue).toBeNull();
+      expect(result.score).toBe(100);
+    });
   });
 
   describe('computeQuantifiedImpact (20% weight)', () => {

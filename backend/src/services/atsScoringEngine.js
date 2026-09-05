@@ -100,16 +100,56 @@ function computeKeywordSkillMatch(rawText = '', parsedSkills = [], targetRole = 
 
 /**
  * 2. Parseability & Formatting (20% weight)
- * Checks text extraction cleanliness, word counts, contact fields, and absence of corrupted glyphs.
+ * Checks text extraction cleanliness, text density relative to file size (catches scanned/image PDFs),
+ * word counts, contact fields, and standard sections.
  */
-function computeFormattingParseability(rawText = '') {
+function computeFormattingParseability(rawText = '', fileSizeBytes = 0, mimeType = 'application/pdf') {
   const clean = (rawText || '').trim();
   if (!clean) {
-    return { score: 0, wordCount: 0, hasEmail: false, hasPhone: false, hasLinks: false };
+    return {
+      score: 10,
+      wordCount: 0,
+      charsPerKB: 0,
+      issue: 'Empty or unextractable text — file may be corrupted, encrypted, or an image-only scan',
+      hasEmail: false,
+      hasPhone: false,
+      hasStandardSections: false,
+      hasLinks: false,
+    };
+  }
+
+  // Text density check relative to file size (catches scanned/image PDFs without machine-readable text)
+  let charsPerKB = 0;
+  let issue = null;
+  if (fileSizeBytes > 0) {
+    charsPerKB = parseFloat((clean.length / (fileSizeBytes / 1024)).toFixed(2));
+    if (charsPerKB < 2) {
+      issue = 'Likely a scanned/image PDF — text may not be machine-readable by ATS systems';
+      return {
+        score: 20, // 0.2
+        wordCount: clean.split(/\s+/).filter(Boolean).length,
+        charsPerKB,
+        issue,
+        hasEmail: /[\w.-]+@[\w.-]+\.\w+/.test(clean),
+        hasPhone: /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/.test(clean),
+        hasStandardSections: /experience|education|skills/i.test(clean),
+        hasLinks: false,
+      };
+    }
   }
 
   const words = clean.split(/\s+/).filter(Boolean);
   const wordCount = words.length;
+
+  const emailRegex = /[\w.-]+@[\w.-]+\.\w+/;
+  const phoneRegex = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/;
+  const standardSectionsRegex = /experience|education|skills/i;
+  const linkRegex = /(?:linkedin\.com|github\.com|https?:\/\/|www\.)/i;
+
+  const hasEmail = emailRegex.test(clean);
+  const hasPhone = phoneRegex.test(clean);
+  const hasStandardSections = standardSectionsRegex.test(clean);
+  const hasLinks = linkRegex.test(clean);
 
   // Length scoring (ideal resume is 350 to 1100 words)
   let lengthPoints = 10;
@@ -121,18 +161,10 @@ function computeFormattingParseability(rawText = '') {
     lengthPoints = 15;
   }
 
-  // Contact Info Parseability
-  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
-  const phoneRegex = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/;
-  const linkRegex = /(?:linkedin\.com|github\.com|https?:\/\/|www\.)/i;
+  // Section & contact parseability
+  const contactPoints = (hasEmail ? 25 : 0) + (hasStandardSections ? 20 : 0) + (hasPhone ? 10 : 0) + (hasLinks ? 5 : 0);
 
-  const hasEmail = emailRegex.test(clean);
-  const hasPhone = phoneRegex.test(clean);
-  const hasLinks = linkRegex.test(clean);
-
-  const contactPoints = (hasEmail ? 25 : 0) + (hasPhone ? 20 : 0) + (hasLinks ? 10 : 0);
-
-  // Encoding & Special Character Cleanliness
+  // Encoding & special character cleanliness
   const badCharCount = (clean.match(/[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFD]/g) || []).length;
   const encodingPoints = badCharCount === 0 ? 10 : badCharCount <= 5 ? 5 : 0;
 
@@ -141,8 +173,11 @@ function computeFormattingParseability(rawText = '') {
   return {
     score,
     wordCount,
+    charsPerKB,
+    issue: null,
     hasEmail,
     hasPhone,
+    hasStandardSections,
     hasLinks,
     badCharCount,
   };
@@ -300,9 +335,11 @@ function computeAtsScore({
   parsed = {},
   targetRole = 'general',
   bulletQualityScore = 75,
+  fileSizeBytes = 0,
+  mimeType = 'application/pdf',
 }) {
   const keywordMatch = computeKeywordSkillMatch(rawText, parsed?.skills, targetRole);
-  const formatting = computeFormattingParseability(rawText);
+  const formatting = computeFormattingParseability(rawText, fileSizeBytes, mimeType);
   const impact = computeQuantifiedImpact(rawText, parsed?.experience, parsed?.projects);
   const completeness = computeSectionCompleteness(rawText, parsed);
 
@@ -333,8 +370,11 @@ function computeAtsScore({
         weight: '20%',
         points: parseFloat((formatting.score * 0.20).toFixed(1)),
         wordCount: formatting.wordCount,
+        charsPerKB: formatting.charsPerKB,
+        issue: formatting.issue,
         hasEmail: formatting.hasEmail,
         hasPhone: formatting.hasPhone,
+        hasStandardSections: formatting.hasStandardSections,
       },
       quantifiedImpact: {
         score: impact.score,

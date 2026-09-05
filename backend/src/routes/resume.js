@@ -85,6 +85,8 @@ router.post('/upload', upload.single('resume'), async (req, res) => {
       parsed,
       targetRole: user?.targetRole,
       bulletQualityScore: bulletQuality,
+      fileSizeBytes: buffer.length,
+      mimeType: mimetype || 'application/pdf',
     });
 
     const atsScore = atsResult.atsScore;

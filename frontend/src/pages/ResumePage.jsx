@@ -85,6 +85,15 @@ export default function ResumePage() {
                     <div className="h-1.5 bg-panel rounded-full overflow-hidden">
                       <div className="h-full rounded-full bg-signal transition-all duration-700" style={{ width: `${latest.atsBreakdown.formattingParseability?.score || 0}%` }} />
                     </div>
+                    {latest.atsBreakdown.formattingParseability?.issue && (
+                      <div className="mt-2 text-xs bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-lg p-2.5 flex items-start gap-2">
+                        <span>⚠️</span>
+                        <div>
+                          <p className="font-semibold text-[11px]">Parseability Alert</p>
+                          <p className="text-[11px] opacity-90">{latest.atsBreakdown.formattingParseability.issue}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-1.5 bg-panel2/60 border border-hairline/60 rounded-xl p-3">
