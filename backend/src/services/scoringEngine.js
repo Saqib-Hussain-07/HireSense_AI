@@ -131,29 +131,36 @@ async function scoreAnswer({ question, answerTranscript, targetRole, company, mo
     }
   }
 
+  // 5 core rubric dimensions (all normalized to transparent 0-10 scale).
+  // In behavioral interviews, structure is directly grounded in STAR method adherence.
+  const effectiveStructure = isBehavioral && starCheck ? star : structure;
+
+  const coreDimensions = [
+    relevance,
+    effectiveStructure,
+    technicalAccuracy,
+    businessThinking,
+    creativity,
+  ];
+
+  const dimensionSum = coreDimensions.reduce((a, b) => a + b, 0);
+  const dimensionAverage = dimensionSum / coreDimensions.length;
+
+  // Transparent 1 to 10 final score directly from simple average (zero mode-dependent denominators)
+  const finalScore = Math.max(1, Math.min(10, Math.round(dimensionAverage)));
+
+  // Named transparent verdict thresholds (Hire >= 8.0 [4.0/5], Hold 6.0-7.9 [3.0-3.9/5], Pass < 6.0 [<3.0/5])
+  const verdict = dimensionAverage >= 8.0 ? 'Hire' : dimensionAverage >= 6.0 ? 'Hold' : 'Pass';
+
   const scores = {
     relevance,
-    structure,
+    structure: effectiveStructure,
     technicalAccuracy,
     businessThinking,
     deliveryScore: delivery.deliveryScore,
     star,
     creativity,
   };
-
-  // Compute weighted total using rubric weights
-  const weightedTotal =
-    relevance * 2 +
-    structure * 1.5 +
-    technicalAccuracy * 2 +
-    businessThinking * 1 +
-    delivery.deliveryScore * 1 +
-    (isBehavioral ? star * 1 : 0) +
-    creativity * 0.5;
-
-  const maxScore = isBehavioral ? 90 : 80;
-  // Scale score to 1 to 10
-  const finalScore = Math.max(1, Math.min(10, Math.round((weightedTotal / maxScore) * 10)));
 
   // Derive engagement and confidence deterministically if model omitted them
   const computedEngagement = Math.min(100, Math.max(15, Math.round((delivery.wordCount / 120) * 100)));
@@ -167,6 +174,8 @@ async function scoreAnswer({ question, answerTranscript, targetRole, company, mo
   return {
     rubricScores: scores,
     finalScore,
+    verdict,
+    dimensionAverage: parseFloat(dimensionAverage.toFixed(1)),
     idealAnswer: data.idealAnswer || '',
     gapNotes: data.gapNotes || '',
     evidenceQuotes: data.evidenceQuotes || [],

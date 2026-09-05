@@ -49,7 +49,7 @@ describe('scoreAnswer', () => {
     callAI.mockReset();
   });
 
-  test('combines the precomputed Delivery Score with the AI rubric response and normalizes finalScore to /100', async () => {
+  test('computes transparent finalScore from simple 5-dimension average and assigns named verdict', async () => {
     callAI.mockResolvedValue({
       data: {
         scores: {
@@ -57,7 +57,6 @@ describe('scoreAnswer', () => {
           structure: 8,
           technicalAccuracy: 8,
           businessThinking: 8,
-          star: 8,
           creativity: 8,
         },
         idealAnswer: 'A tighter version of the answer.',
@@ -80,9 +79,10 @@ describe('scoreAnswer', () => {
     expect(callAI).toHaveBeenCalledTimes(1);
     expect(result.rubricScores.deliveryScore).toBeGreaterThanOrEqual(0);
     expect(result.rubricScores.relevance).toBe(9);
-    // 18+12+16+8+deliveryScore+4, normalized against an 80-point max, rounded (STAR is excluded in technical)
-    const expectedRaw = 9 * 2 + 8 * 1.5 + 8 * 2 + 8 * 1 + result.rubricScores.deliveryScore + 8 * 0.5;
-    expect(result.finalScore).toBe(Math.max(1, Math.min(10, Math.round((expectedRaw / 80) * 10))));
+    // 5 core dimensions: (9 + 8 + 8 + 8 + 8) / 5 = 41 / 5 = 8.2
+    expect(result.dimensionAverage).toBe(8.2);
+    expect(result.finalScore).toBe(8);
+    expect(result.verdict).toBe('Hire');
     expect(result.idealAnswer).toBe('A tighter version of the answer.');
     expect(result.evidenceQuotes).toHaveLength(1);
   });
@@ -186,6 +186,10 @@ describe('scoreAnswer', () => {
     expect(result.rubricScores.technicalAccuracy).toBe(6);
     expect(result.rubricScores.businessThinking).toBe(4);
     expect(result.rubricScores.creativity).toBe(2);
+    // (10 + 8 + 6 + 4 + 2) / 5 = 30 / 5 = 6.0 -> finalScore: 6, verdict: Hold
+    expect(result.dimensionAverage).toBe(6.0);
+    expect(result.finalScore).toBe(6);
+    expect(result.verdict).toBe('Hold');
     expect(result.confidenceScore).toBeGreaterThanOrEqual(70);
   });
 });

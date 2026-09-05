@@ -21,15 +21,15 @@ function fmtDuration(seconds) {
 }
 
 function scoreColor(s) {
-  if (s >= 8) return '#5FB8A8';
-  if (s >= 5.5) return '#E8A94B';
+  if (s >= 8.0) return '#5FB8A8';
+  if (s >= 6.0) return '#E8A94B';
   return '#E1685A';
 }
 
 function scoreLabel(s) {
-  if (s >= 8) return 'Good';
-  if (s >= 5.5) return 'Average';
-  return 'Needs Work';
+  if (s >= 8.0) return 'Hire';
+  if (s >= 6.0) return 'Hold';
+  return 'Pass';
 }
 
 /* ── Donut chart using only real score ─────────────────────── */
@@ -56,12 +56,13 @@ function ScoreDonut({ score, size = 120 }) {
 }
 
 /* ── Score chip ─────────────────────────────────────────────── */
-function ScoreBadge({ score }) {
-  const color = scoreColor(score || 0);
+function ScoreBadge({ score, verdict }) {
+  const label = verdict || scoreLabel(score || 0);
+  const color = label === 'Hire' ? '#5FB8A8' : label === 'Hold' ? '#E8A94B' : '#E1685A';
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold"
+    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold uppercase tracking-wider"
       style={{ background: color + '22', color }}>
-      {scoreLabel(score || 0)}
+      {label}
     </span>
   );
 }
@@ -197,7 +198,7 @@ function QuestionCard({ q, index, totalAnswered }) {
           {hasScore && (
             <>
               <span className="font-display font-bold text-lg" style={{ color }}>{q.finalScore}</span>
-              <ScoreBadge score={q.finalScore} />
+              <ScoreBadge score={q.finalScore} verdict={q.verdict} />
             </>
           )}
           {q.timedOut && (
@@ -465,8 +466,11 @@ export default function SessionReportPage() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <h1 className="font-display font-bold text-xl text-text">Overall Score</h1>
-                <ScoreBadge score={overallScore} />
+                <ScoreBadge score={overallScore} verdict={session.verdict} />
               </div>
+              <p className="text-[11px] text-faint font-mono">
+                Verdict Thresholds: <span className="text-signal font-semibold">Hire (≥8.0)</span> · <span className="text-amber-400 font-semibold">Hold (6.0–7.9)</span> · <span className="text-rose-400 font-semibold">Pass (&lt;6.0)</span> · Transparent 5-dimension average
+              </p>
               {/* Session metadata — only real fields */}
               <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-xs text-muted">
                 {typeLabel    && <span>Type: <span className="text-text capitalize">{typeLabel}</span></span>}

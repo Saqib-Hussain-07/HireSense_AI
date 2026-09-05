@@ -153,6 +153,7 @@ router.post('/:id/answer', async (req, res) => {
 
     q.rubricScores = result.rubricScores;
     q.finalScore = result.finalScore;
+    if (result.verdict) q.verdict = result.verdict;
     q.idealAnswer = result.idealAnswer;
     q.gapNotes = result.gapNotes;
     q.evidenceQuotes = result.evidenceQuotes;
@@ -223,6 +224,7 @@ router.post('/:id/redo', async (req, res) => {
 
     q.rubricScores = result.rubricScores;
     q.finalScore = result.finalScore;
+    if (result.verdict) q.verdict = result.verdict;
     q.idealAnswer = result.idealAnswer;
     q.gapNotes = result.gapNotes;
     q.evidenceQuotes = result.evidenceQuotes;
@@ -247,6 +249,7 @@ router.post('/:id/finish', async (req, res) => {
       : 0;
 
     session.overallScore = overallScore;
+    session.verdict = overallScore >= 8.0 ? 'Hire' : overallScore >= 6.0 ? 'Hold' : 'Pass';
     session.status = 'completed';
     await session.save();
 

@@ -52,6 +52,7 @@ const QuestionSchema = new mongoose.Schema(
     followUps: { type: [FollowUpSchema], default: [] },
     rubricScores: { type: RubricScoresSchema, default: () => ({}) },
     finalScore: { type: Number, default: 0 },
+    verdict: { type: String, enum: ['Hire', 'Hold', 'Pass'], default: null },
     evidenceQuotes: { type: [EvidenceQuoteSchema], default: [] },
     starCheck: { type: StarCheckSchema, default: () => ({}) },
     idealAnswer: { type: String, default: '' },
@@ -98,6 +99,7 @@ const InterviewSessionSchema = new mongoose.Schema(
     lastSavedAt: { type: Date, default: Date.now },
     questions: { type: [QuestionSchema], default: [] },
     overallScore: { type: Number, default: 0 },
+    verdict: { type: String, enum: ['Hire', 'Hold', 'Pass'], default: null },
     duration: { type: Number, default: 0 },
   },
   { timestamps: true }
