@@ -6,6 +6,7 @@ const JobDescription = require('../models/JobDescription');
 const { requireAuth } = require('../middleware/auth');
 const { callAI } = require('../services/aiAdapter');
 const { jdExtractPrompt } = require('../utils/prompts');
+const { assertPublicHost } = require('../utils/ssrfValidator');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -41,10 +42,34 @@ function cleanUrl(url) {
 
 async function fetchJDTextFromUrl(url) {
   const targetUrl = cleanUrl(url);
-  const res = await fetch(targetUrl, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; HireSenseAI/1.0)' },
-  });
-  if (!res.ok) throw new Error(`Could not fetch that URL (status ${res.status})`);
+
+  // Validate that the host is a valid public endpoint and not a private/loopback/cloud metadata IP
+  await assertPublicHost(targetUrl);
+
+  let currentUrl = targetUrl;
+  let res;
+  const MAX_REDIRECTS = 3;
+
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    res = await fetch(currentUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; HireSenseAI/1.0)' },
+      redirect: 'manual',
+    });
+
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get('location');
+      if (!location) break;
+
+      const nextUrl = new URL(location, currentUrl).toString();
+      await assertPublicHost(nextUrl); // Re-assert public host on every redirect hop
+      currentUrl = nextUrl;
+      continue;
+    }
+
+    break;
+  }
+
+  if (!res || !res.ok) throw new Error(`Could not fetch that URL (status ${res ? res.status : 'error'})`);
   const html = await res.text();
   const $ = cheerio.load(html);
   $('script, style, nav, header, footer, noscript').remove();
