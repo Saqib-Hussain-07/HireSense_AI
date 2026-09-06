@@ -56,12 +56,12 @@ describe('analyzeGithubRepo', () => {
   });
 
   test('throws a clear error for a private/nonexistent repo (404)', async () => {
-    fetch.mockResolvedValueOnce({ ok: false, status: 404 });
+    fetch.mockResolvedValue({ ok: false, status: 404 });
     await expect(analyzeGithubRepo('https://github.com/octocat/does-not-exist')).rejects.toThrow('not found');
   });
 
   test('throws a clear rate-limit error on 403', async () => {
-    fetch.mockResolvedValueOnce({ ok: false, status: 403 });
+    fetch.mockResolvedValue({ ok: false, status: 403 });
     await expect(analyzeGithubRepo('https://github.com/octocat/hello-world')).rejects.toThrow('rate limit');
   });
 

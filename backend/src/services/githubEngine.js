@@ -27,16 +27,27 @@ async function fetchRepoData(repoUrl) {
   const { owner, repo } = parseRepoUrl(repoUrl);
   const headers = githubHeaders();
 
-  const repoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers });
-  if (!repoRes.ok) {
-    if (repoRes.status === 404) throw new Error('Repository not found (is it public?)');
-    if (repoRes.status === 403) throw new Error('GitHub API rate limit hit — set GITHUB_TOKEN in .env to raise the limit');
-    throw new Error(`GitHub API error ${repoRes.status}`);
+  const readmePromise = Promise.resolve()
+    .then(() => fetch(`https://api.github.com/repos/${owner}/${repo}/readme`, { headers }))
+    .catch((e) => {
+      console.warn('[githubEngine] README fetch failed (non-fatal):', e.message);
+      return { ok: false, status: 500 };
+    });
+
+  const [repoRes, langRes, readmeRes] = await Promise.all([
+    fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers }),
+    fetch(`https://api.github.com/repos/${owner}/${repo}/languages`, { headers }),
+    readmePromise,
+  ]);
+
+  if (!repoRes || !repoRes.ok) {
+    if (repoRes && repoRes.status === 404) throw new Error('Repository not found (is it public?)');
+    if (repoRes && repoRes.status === 403) throw new Error('GitHub API rate limit hit — set GITHUB_TOKEN in .env to raise the limit');
+    throw new Error(`GitHub API error ${repoRes ? repoRes.status : 'unknown'}`);
   }
   const repoJson = await repoRes.json();
 
-  const langRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/languages`, { headers });
-  const langData = langRes.ok ? await langRes.json() : {};
+  const langData = (langRes && langRes.ok) ? await langRes.json() : {};
   const totalBytes = Object.values(langData).reduce((a, b) => a + b, 0);
   const languages = Object.entries(langData).map(([name, bytes]) => ({
     name,
@@ -44,14 +55,13 @@ async function fetchRepoData(repoUrl) {
   })).sort((a, b) => b.percentage - a.percentage);
 
   let readmeExcerpt = '';
-  try {
-    const readmeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/readme`, { headers });
-    if (readmeRes.ok) {
+  if (readmeRes && readmeRes.ok) {
+    try {
       const readmeJson = await readmeRes.json();
       readmeExcerpt = Buffer.from(readmeJson.content, readmeJson.encoding).toString('utf-8');
+    } catch (e) {
+      console.warn('[githubEngine] README decoding failed (non-fatal):', e.message);
     }
-  } catch (e) {
-    console.warn('[githubEngine] README fetch failed (non-fatal):', e.message);
   }
 
   return {
