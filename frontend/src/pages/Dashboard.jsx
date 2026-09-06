@@ -9,26 +9,7 @@ import {
 } from 'recharts';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api';
-
-/* ──────────────────────────────────────────────────────────────
-   Helpers
-─────────────────────────────────────────────────────────────── */
-function fmtDate(d) {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-function scoreColor(s) {
-  if (s >= 80) return '#ffffff';
-  if (s >= 55) return '#d4d4d8';
-  return '#71717a';
-}
-
-function scoreLabel(s) {
-  if (s >= 80) return 'Exceptional';
-  if (s >= 55) return 'Proficient';
-  return 'Developing';
-}
+import { fmtDate, scoreColor, scoreLabel } from '../lib/formatters';
 
 /* Stat pill */
 function StatPill({ icon, label, value, color = 'var(--color-muted)', sourceId, sourceDate, verified }) {
@@ -513,7 +494,7 @@ export default function Dashboard() {
               <div className="space-y-2">
                 {completedSessions.slice(0, 4).map(s => {
                   const sc = s.overallScore || 0;
-                  const color = scoreColor(sc);
+                  const color = scoreColor(sc, 'monochrome');
                   return (
                     <Link key={s._id} to={`/interview/${s._id}/report`}
                       className="flex items-center justify-between bg-[#0a0a0a]/60 border border-white/5 rounded-xl px-3 py-2.5
@@ -533,7 +514,7 @@ export default function Dashboard() {
                         <span className="font-display font-bold text-sm" style={{ color }}>{sc}%</span>
                         <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-white/5"
                           style={{ color }}>
-                          {scoreLabel(sc)}
+                          {scoreLabel(sc, 'proficiency')}
                         </span>
                       </div>
                     </Link>
@@ -571,7 +552,7 @@ export default function Dashboard() {
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   {Object.entries(stats.dimAverages).map(([dim, val]) => {
                     const pct = Math.round(((val || 0) / 10) * 100);
-                    const color = scoreColor(pct);
+                    const color = scoreColor(pct, 'monochrome');
                     return (
                       <div key={dim} className="bg-[#0a0a0a]/60 border border-white/5 rounded-xl px-3 py-2">
                         <p className="text-[10px] font-mono text-zinc-500 uppercase mb-1 truncate">{dim.replace(/([A-Z])/g, ' $1')}</p>
@@ -662,7 +643,7 @@ export default function Dashboard() {
                   <span className="text-zinc-500">Improvement</span>
                   <span className="font-semibold" style={{
                     color: completedSessions.length >= 2
-                      ? scoreColor((completedSessions[completedSessions.length - 1]?.overallScore || 0) - (completedSessions[0]?.overallScore || 0) + 50)
+                      ? scoreColor((completedSessions[completedSessions.length - 1]?.overallScore || 0) - (completedSessions[0]?.overallScore || 0) + 50, 'monochrome')
                       : 'var(--color-muted)'
                   }}>
                     {completedSessions.length >= 2

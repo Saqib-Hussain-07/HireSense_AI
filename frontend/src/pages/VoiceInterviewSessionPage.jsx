@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useVoice } from '../hooks/useVoice.js';
 import { useInterviewSocket } from '../hooks/useInterviewSocket.js';
 import { api } from '../lib/api';
+import { scoreColor, scoreLabel } from '../lib/formatters';
 
 /* ── Waveform animation (AI speaking) ──────────────────────────────────── */
 function AIWaveform({ active }) {
@@ -102,8 +103,8 @@ function Bubble({ role, text, isInterim }) {
 /* ── Score preview ──────────────────────────────────────────────────────── */
 function ScorePreview({ result }) {
   const pct = result.finalScore || 0;
-  const color = pct >= 8 ? '#5FB8A8' : pct >= 5.5 ? '#E8A94B' : '#E1685A';
-  const label = pct >= 8 ? 'Good' : pct >= 5.5 ? 'Average' : 'Needs work';
+  const color = scoreColor(pct);
+  const label = scoreLabel(pct, 'rating');
   return (
     <div className="w-full bg-panel border border-hairline rounded-2xl p-4 space-y-3">
       <div className="flex items-center justify-between">

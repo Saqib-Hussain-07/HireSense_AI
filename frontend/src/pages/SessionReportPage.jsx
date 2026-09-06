@@ -2,35 +2,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
-
-/* ──────────────────────────────────────────────────────────────
-   Helpers
-─────────────────────────────────────────────────────────────── */
-function fmtDate(d) {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-IN', {
-    day: 'numeric', month: 'short', year: 'numeric',
-  });
-}
-
-function fmtDuration(seconds) {
-  if (!seconds) return '—';
-  const m = Math.floor(seconds / 60);
-  const s = Math.round(seconds % 60);
-  return m > 0 ? `${m}m ${s}s` : `${s}s`;
-}
-
-function scoreColor(s) {
-  if (s >= 8.0) return '#5FB8A8';
-  if (s >= 6.0) return '#E8A94B';
-  return '#E1685A';
-}
-
-function scoreLabel(s) {
-  if (s >= 8.0) return 'Hire';
-  if (s >= 6.0) return 'Hold';
-  return 'Pass';
-}
+import { fmtDate, fmtDuration, scoreColor, scoreLabel } from '../lib/formatters';
 
 /* ── Donut chart using only real score ─────────────────────── */
 function ScoreDonut({ score, size = 120 }) {
