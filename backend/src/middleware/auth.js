@@ -1,74 +1,13 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-
-let jwksClient = null;
-function getJwksClient() {
-  if (!jwksClient) {
-    // eslint-disable-next-line global-require
-    const jwksRsa = require('jwks-rsa');
-    const rawIssuer = process.env.CLERK_ISSUER || 'https://natural-javelin-9813.clerk.accounts.dev';
-    const clerkIssuer = rawIssuer.replace(/\/$/, '');
-    jwksClient = jwksRsa({
-      jwksUri: `${clerkIssuer}/.well-known/jwks.json`,
-      cache: true,
-      rateLimit: true,
-    });
-  }
-  return jwksClient;
-}
+const { verifyAndUpsertClerkUser } = require('../services/clerkAuth');
 
 async function verifyClerkToken(token) {
-  const decoded = jwt.decode(token, { complete: true });
-  if (!decoded || !decoded.header || !decoded.header.kid) return null;
-
-  const rawIssuer = process.env.CLERK_ISSUER || 'https://natural-javelin-9813.clerk.accounts.dev';
-  const clerkIssuer = rawIssuer.replace(/\/$/, '');
-
-  const client = getJwksClient();
-  const key = await new Promise((resolve, reject) => {
-    client.getSigningKey(decoded.header.kid, (err, signingKey) => {
-      if (err) reject(err);
-      else resolve(signingKey.getPublicKey());
-    });
-  });
-
-  const payload = await new Promise((resolve, reject) => {
-    jwt.verify(
-      token,
-      key,
-      { issuer: [clerkIssuer, `${clerkIssuer}/`], algorithms: ['RS256'] },
-      (err, p) => {
-        if (err) reject(err);
-        else resolve(p);
-      }
-    );
-  });
-
-  if (!payload || !payload.sub) return null;
-
-  const clerkId = payload.sub;
-  const fallbackEmail = `${clerkId.toLowerCase()}@clerk.local`;
-  const email = (payload.email || '').toLowerCase().trim();
-
-  const orConditions = [
-    { clerkId },
-    { email: fallbackEmail },
-  ];
-  if (email) orConditions.push({ email });
-
-  let user = await User.findOne({ $or: orConditions });
-  if (!user) {
-    user = await User.create({
-      clerkId,
-      name: payload.name || payload.email || 'User',
-      email: email || fallbackEmail,
-    });
-  } else if (user.clerkId !== clerkId) {
-    user.clerkId = clerkId;
-    await user.save();
+  try {
+    const user = await verifyAndUpsertClerkUser(token);
+    return user ? user._id : null;
+  } catch (_e) {
+    return null;
   }
-
-  return user._id;
 }
 
 async function resolveUserFromToken(token) {
