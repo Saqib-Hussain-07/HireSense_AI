@@ -172,6 +172,9 @@ See **[DEPLOYMENT.md](DEPLOYMENT.md)** for:
 
 ---
 
-## Full Spec
+## Documentation & Contributing
 
-See [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) for data models, API routes, prompt templates, and the phased roadmap this build was generated from.
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — **Start here!** 5-minute setup steps, repository directory tour, and the core engineering principles (e.g. *One AI call per turn*, deterministic scoring, and indexed queries).
+- **[PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)** — Deep-dive architectural specification, historical data models, and prompt templates.
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** — Production deployment instructions for Render, Railway, Docker, and Vercel.
+
