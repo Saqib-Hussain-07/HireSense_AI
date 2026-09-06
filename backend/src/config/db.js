@@ -1,19 +1,30 @@
 const mongoose = require('mongoose');
 
+function getConnectionOptions(overrides = {}) {
+  const maxPoolSize = parseInt(process.env.MONGO_MAX_POOL_SIZE, 10) || 50;
+  const minPoolSize = parseInt(process.env.MONGO_MIN_POOL_SIZE, 10) || 5;
+  const serverSelectionTimeoutMS = parseInt(process.env.MONGO_SERVER_SELECTION_TIMEOUT_MS, 10) || 4000;
+
+  return {
+    maxPoolSize,
+    minPoolSize,
+    serverSelectionTimeoutMS,
+    socketTimeoutMS: 45000,
+    ...overrides,
+  };
+}
+
 /**
- * Connects to MongoDB. If MONGO_URI is unreachable (e.g. local dev without
- * Mongo/Atlas set up yet), we don't crash the whole app — we log a clear
- * warning so the developer knows API routes touching the DB will fail until
- * a real connection string is provided. This keeps the rest of the stack
- * (auth stubs, static routes, health checks) inspectable during setup.
+ * Connects to MongoDB with tuned connection pool options for small-to-mid deployments.
+ * Prevents connection churn and unbounded socket accumulation under concurrent workloads.
  */
-async function connectDB() {
+async function connectDB(overrideOptions = {}) {
   const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/hiresense';
+  const options = getConnectionOptions(overrideOptions);
+
   try {
-    await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 4000,
-    });
-    console.log(`[db] connected to MongoDB at ${uri}`);
+    await mongoose.connect(uri, options);
+    console.log(`[db] connected to MongoDB at ${uri} (pool: min ${options.minPoolSize}, max ${options.maxPoolSize})`);
   } catch (err) {
     console.warn('[db] Could not connect to MongoDB:', err.message);
     console.warn('[db] Server will keep running, but any DB-backed route will 500 until MONGO_URI is valid.');
@@ -22,3 +33,5 @@ async function connectDB() {
 }
 
 module.exports = connectDB;
+module.exports.getConnectionOptions = getConnectionOptions;
+
