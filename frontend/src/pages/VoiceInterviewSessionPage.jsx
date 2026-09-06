@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useVoice } from '../hooks/useVoice.js';
 import { useInterviewSocket } from '../hooks/useInterviewSocket.js';
@@ -353,8 +353,15 @@ export default function VoiceInterviewSessionPage() {
     );
   }
 
-  // BUG-19: findLast is ES2023 and not supported in Safari < 16; use a compat version
-  const currentAIText = [...transcript].reverse().find(m => m.role === 'ai')?.text || '';
+  // Memoize latest AI question/prompt to avoid re-cloning & searching transcript on every keystroke / interim speech frame
+  const currentAIText = useMemo(() => {
+    for (let i = transcript.length - 1; i >= 0; i--) {
+      if (transcript[i].role === 'ai') {
+        return transcript[i].text || '';
+      }
+    }
+    return '';
+  }, [transcript]);
 
   return (
     <div className="h-screen flex flex-col bg-ink overflow-hidden">
