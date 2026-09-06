@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { api } from '../lib/api';
+import { api, getAuthToken } from '../lib/api';
 
 const AuthContext = createContext(null);
 
@@ -8,18 +8,23 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('hiresense_token');
-    if (!token) {
-      setLoading(false);
-      return;
+    async function initAuth() {
+      try {
+        const token = await getAuthToken();
+        if (!token) {
+          setLoading(false);
+          return;
+        }
+        const profile = await api.getProfile();
+        setUser(profile);
+      } catch (_e) {
+        // Not logged in or invalid token
+      } finally {
+        setLoading(false);
+      }
     }
-    api
-      .getProfile()
-      .then(setUser)
-      .catch(() => {
-        localStorage.removeItem('hiresense_token');
-      })
-      .finally(() => setLoading(false));
+
+    initAuth();
   }, []);
 
   function logout() {

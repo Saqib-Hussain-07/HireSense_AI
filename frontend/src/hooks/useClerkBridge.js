@@ -6,10 +6,12 @@ import { api } from '../lib/api.js';
 /**
  * useClerkBridge
  * --------------
- * After Clerk signs a user in, exchanges their Clerk session token for a
- * local backend JWT so every API call and WebSocket connection continues to
- * work without changes. Stores the local token in localStorage under the
- * same key ('hiresense_token') that api.js already reads.
+ * Synchronizes the active Clerk session with the backend User profile in
+ * MongoDB and keeps AuthContext updated.
+ *
+ * Direct Clerk token resolution: API requests and WebSockets resolve their
+ * bearer tokens on-demand via getAuthToken() (which queries Clerk directly),
+ * eliminating parallel token stores or localStorage mirroring.
  *
  * Must be rendered inside both <ClerkProvider> and <AuthProvider>.
  */
@@ -22,14 +24,13 @@ export function useClerkBridge() {
   useEffect(() => {
     if (!clerkLoaded || !clerkSignedIn) {
       if (clerkLoaded && !clerkSignedIn) {
-        localStorage.removeItem('hiresense_token');
         setUser(null);
         syncedRef.current = false;
       }
       return;
     }
 
-    if (syncedRef.current && localStorage.getItem('hiresense_token')) return;
+    if (syncedRef.current) return;
 
     async function syncWithBackend() {
       try {
@@ -40,8 +41,7 @@ export function useClerkBridge() {
         const name = clerkUser?.fullName || clerkUser?.firstName || (email ? email.split('@')[0] : 'User');
 
         const data = await api.clerkSession({ sessionToken, email, name });
-        if (data?.token) {
-          localStorage.setItem('hiresense_token', data.token);
+        if (data?.user) {
           setUser(data.user);
           syncedRef.current = true;
         }

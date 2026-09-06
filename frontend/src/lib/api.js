@@ -91,15 +91,15 @@ export const api = {
   analyzeGithub: (repoUrl) => request('/github/analyze', { method: 'POST', body: { repoUrl } }),
 };
 
-export function wsUrl(sessionId, overrideToken) {
-  const token = overrideToken || getToken() || '';
+export function wsUrl(sessionId, token = '') {
+  const resolvedToken = token || getToken() || '';
   if (API_URL) {
     const urlObj = new URL(API_URL);
     const wsProtocol = urlObj.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${wsProtocol}//${urlObj.host}/ws/interview/${sessionId}?token=${token}`;
+    return `${wsProtocol}//${urlObj.host}/ws/interview/${sessionId}${resolvedToken ? `?token=${resolvedToken}` : ''}`;
   }
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${protocol}//${window.location.host}/ws/interview/${sessionId}?token=${token}`;
+  return `${protocol}//${window.location.host}/ws/interview/${sessionId}${resolvedToken ? `?token=${resolvedToken}` : ''}`;
 }
 
 export { getToken, getAuthToken };
