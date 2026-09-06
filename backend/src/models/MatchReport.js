@@ -26,5 +26,7 @@ const MatchReportSchema = new mongoose.Schema(
 
 MatchReportSchema.index({ userId: 1, createdAt: -1 });
 MatchReportSchema.index({ userId: 1, jdId: 1 });
+MatchReportSchema.index({ userId: 1, resumeId: 1, jdId: 1 });
 
 module.exports = mongoose.model('MatchReport', MatchReportSchema);
+

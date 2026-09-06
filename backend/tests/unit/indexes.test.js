@@ -41,6 +41,7 @@ describe('Database Model Indexes (Performance Optimization)', () => {
     expect(MatchReport.schema.path('jdId').options.index).toBe(true);
     expect(hasCompoundIndex(MatchReport.schema, { userId: 1, createdAt: -1 })).toBe(true);
     expect(hasCompoundIndex(MatchReport.schema, { userId: 1, jdId: 1 })).toBe(true);
+    expect(hasCompoundIndex(MatchReport.schema, { userId: 1, resumeId: 1, jdId: 1 })).toBe(true);
   });
 
   test('Resume defines userId index and compound query indexes', () => {
