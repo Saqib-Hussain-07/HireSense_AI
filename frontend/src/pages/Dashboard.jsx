@@ -277,8 +277,9 @@ export default function Dashboard() {
   const { data: tracker } =
     useQuery({ queryKey: ['weaknessTracker'], queryFn: api.getWeaknessTracker });
 
-  const { data: sessions } =
+  const { data: historyData } =
     useQuery({ queryKey: ['history'], queryFn: api.getHistory });
+  const sessions = Array.isArray(historyData) ? historyData : (historyData?.sessions || []);
 
   const latest = versions?.[0];
 

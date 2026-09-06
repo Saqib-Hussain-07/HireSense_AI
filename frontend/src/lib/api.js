@@ -77,7 +77,13 @@ export const api = {
   finishInterview: (id) => request(`/interview/${id}/finish`, { method: 'POST' }),
   tts: (text) => request('/interview/tts', { method: 'POST', body: { text } }),
 
-  getHistory: () => request('/history'),
+  getHistory: (params = {}) => {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', params.page);
+    if (params?.limit) qs.set('limit', params.limit);
+    const q = qs.toString();
+    return request(`/history${q ? `?${q}` : ''}`);
+  },
   getDashboardStats: () => request('/dashboard/stats'),
 
   getWeaknessTracker: () => request('/weakness-tracker'),
