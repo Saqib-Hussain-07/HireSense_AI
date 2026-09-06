@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader.jsx';
+import { AtsBreakdownRow, ATS_BREAKDOWN_ROWS } from '../components/AtsBreakdownRow.jsx';
 import { api } from '../lib/api';
 
 export default function MatchPage() {
@@ -124,52 +125,16 @@ export default function MatchPage() {
                   <p className="text-xs text-muted font-mono uppercase tracking-wider">Formula Breakdown</p>
                   <span className="text-[10px] font-mono text-faint">35 / 20 / 20 / 15 / 10</span>
                 </div>
-                <div className="grid grid-cols-1 gap-2">
-                  <div className="space-y-1 bg-panel/60 border border-hairline/50 rounded-lg p-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-text">JD Skill & Keyword Match (35%)</span>
-                      <span className="text-xs font-bold font-mono text-signal">{result.breakdown.keywordSkillMatch?.score || 0}/100</span>
-                    </div>
-                    <div className="h-1.5 bg-panel2 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-signal" style={{ width: `${result.breakdown.keywordSkillMatch?.score || 0}%` }} />
-                    </div>
-                  </div>
-                  <div className="space-y-1 bg-panel/60 border border-hairline/50 rounded-lg p-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-text">Parseability & Formatting (20%)</span>
-                      <span className="text-xs font-bold font-mono text-signal">{result.breakdown.formattingParseability?.score || 0}/100</span>
-                    </div>
-                    <div className="h-1.5 bg-panel2 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-signal" style={{ width: `${result.breakdown.formattingParseability?.score || 0}%` }} />
-                    </div>
-                  </div>
-                  <div className="space-y-1 bg-panel/60 border border-hairline/50 rounded-lg p-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-text">Quantified Impact (20%)</span>
-                      <span className="text-xs font-bold font-mono text-signal">{result.breakdown.quantifiedImpact?.score || 0}/100</span>
-                    </div>
-                    <div className="h-1.5 bg-panel2 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-signal" style={{ width: `${result.breakdown.quantifiedImpact?.score || 0}%` }} />
-                    </div>
-                  </div>
-                  <div className="space-y-1 bg-panel/60 border border-hairline/50 rounded-lg p-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-text">Section Completeness (15%)</span>
-                      <span className="text-xs font-bold font-mono text-signal">{result.breakdown.sectionCompleteness?.score || 0}/100</span>
-                    </div>
-                    <div className="h-1.5 bg-panel2 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-signal" style={{ width: `${result.breakdown.sectionCompleteness?.score || 0}%` }} />
-                    </div>
-                  </div>
-                  <div className="space-y-1 bg-panel/60 border border-hairline/50 rounded-lg p-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-text">Bullet & Language Quality (10%)</span>
-                      <span className="text-xs font-bold font-mono text-signal">{result.breakdown.bulletQuality?.score || 0}/100</span>
-                    </div>
-                    <div className="h-1.5 bg-panel2 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-signal" style={{ width: `${result.breakdown.bulletQuality?.score || 0}%` }} />
-                    </div>
-                  </div>
+                <div className="grid grid-cols-1 gap-2.5">
+                  {ATS_BREAKDOWN_ROWS.map((row) => (
+                    <AtsBreakdownRow
+                      key={row.key}
+                      {...row}
+                      label={row.key === 'keywordSkillMatch' ? 'JD Skill & Keyword Match' : row.label}
+                      score={result.breakdown[row.key]?.score}
+                      issue={result.breakdown[row.key]?.issue}
+                    />
+                  ))}
                 </div>
               </div>
             )}

@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '../components/PageHeader.jsx';
+import { AtsBreakdownRow, ATS_BREAKDOWN_ROWS } from '../components/AtsBreakdownRow.jsx';
 import { api } from '../lib/api';
 
 export default function ResumePage() {
@@ -116,84 +117,15 @@ export default function ResumePage() {
                   <span className="text-[10px] font-mono text-faint">35 / 20 / 20 / 15 / 10 Formula</span>
                 </div>
                 <div className="grid grid-cols-1 gap-2.5">
-                  <div className="space-y-1.5 bg-panel2/60 border border-hairline/60 rounded-xl p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-text">Keyword & Skill Match</span>
-                        <span className="text-[10px] font-mono text-faint bg-panel px-1.5 py-0.5 rounded border border-hairline">35%</span>
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-signal/10 text-signal">Deterministic Code</span>
-                      </div>
-                      <span className="text-xs font-bold font-mono text-signal">{latest.atsBreakdown.keywordSkillMatch?.score || 0}/100</span>
-                    </div>
-                    <div className="h-1.5 bg-panel rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-signal transition-all duration-700" style={{ width: `${latest.atsBreakdown.keywordSkillMatch?.score || 0}%` }} />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5 bg-panel2/60 border border-hairline/60 rounded-xl p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-text">Parseability & Formatting</span>
-                        <span className="text-[10px] font-mono text-faint bg-panel px-1.5 py-0.5 rounded border border-hairline">20%</span>
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-signal/10 text-signal">Deterministic Code</span>
-                      </div>
-                      <span className="text-xs font-bold font-mono text-signal">{latest.atsBreakdown.formattingParseability?.score || 0}/100</span>
-                    </div>
-                    <div className="h-1.5 bg-panel rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-signal transition-all duration-700" style={{ width: `${latest.atsBreakdown.formattingParseability?.score || 0}%` }} />
-                    </div>
-                    {latest.atsBreakdown.formattingParseability?.issue && (
-                      <div className="mt-2 text-xs bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-lg p-2.5 flex items-start gap-2">
-                        <span>⚠️</span>
-                        <div>
-                          <p className="font-semibold text-[11px]">Parseability Alert</p>
-                          <p className="text-[11px] opacity-90">{latest.atsBreakdown.formattingParseability.issue}</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5 bg-panel2/60 border border-hairline/60 rounded-xl p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-text">Quantified Impact</span>
-                        <span className="text-[10px] font-mono text-faint bg-panel px-1.5 py-0.5 rounded border border-hairline">20%</span>
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-signal/10 text-signal">Deterministic Regex</span>
-                      </div>
-                      <span className="text-xs font-bold font-mono text-signal">{latest.atsBreakdown.quantifiedImpact?.score || 0}/100</span>
-                    </div>
-                    <div className="h-1.5 bg-panel rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-signal transition-all duration-700" style={{ width: `${latest.atsBreakdown.quantifiedImpact?.score || 0}%` }} />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5 bg-panel2/60 border border-hairline/60 rounded-xl p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-text">Section Completeness</span>
-                        <span className="text-[10px] font-mono text-faint bg-panel px-1.5 py-0.5 rounded border border-hairline">15%</span>
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-signal/10 text-signal">Deterministic Code</span>
-                      </div>
-                      <span className="text-xs font-bold font-mono text-signal">{latest.atsBreakdown.sectionCompleteness?.score || 0}/100</span>
-                    </div>
-                    <div className="h-1.5 bg-panel rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-signal transition-all duration-700" style={{ width: `${latest.atsBreakdown.sectionCompleteness?.score || 0}%` }} />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5 bg-panel2/60 border border-hairline/60 rounded-xl p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-text">Bullet & Language Quality</span>
-                        <span className="text-[10px] font-mono text-faint bg-panel px-1.5 py-0.5 rounded border border-hairline">10%</span>
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-onair/10 text-onair">LLM Evaluated</span>
-                      </div>
-                      <span className="text-xs font-bold font-mono text-signal">{latest.atsBreakdown.bulletQuality?.score || 0}/100</span>
-                    </div>
-                    <div className="h-1.5 bg-panel rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-signal transition-all duration-700" style={{ width: `${latest.atsBreakdown.bulletQuality?.score || 0}%` }} />
-                    </div>
-                  </div>
+                  {ATS_BREAKDOWN_ROWS.map((row) => (
+                    <AtsBreakdownRow
+                      key={row.key}
+                      {...row}
+                      label={latest.isJdSpecific && row.key === 'keywordSkillMatch' ? 'JD Skill & Keyword Match' : row.label}
+                      score={latest.atsBreakdown[row.key]?.score}
+                      issue={latest.atsBreakdown[row.key]?.issue}
+                    />
+                  ))}
                 </div>
               </div>
             ) : null}
