@@ -4,8 +4,8 @@
  * Generates a 7-day study plan from the user's current WeaknessTracker,
  * prioritizing topics with the highest occurrence count (most persistent
  * weaknesses first). One narrow AI call, stored as the user's single
- * latest LearningPlan document (regenerated each time it's requested so
- * it always reflects the most recent weaknesses).
+ * latest LearningPlan document (cached by topics fingerprint so AI calls
+ * are only made when the user's weak topics change).
  */
 
 const LearningPlan = require('../models/LearningPlan');
@@ -25,12 +25,18 @@ async function generateLearningPlan(userId, targetRole) {
     return { days: [], note: 'No weak topics tracked yet — finish a scored session first.' };
   }
 
+  const fingerprint = weakTopics.join('|');
+  const existing = await LearningPlan.findOne({ userId });
+  if (existing && existing.topicsFingerprint === fingerprint && existing.days?.length > 0) {
+    return existing;
+  }
+
   const { data } = await callAI({ ...learningPlanPrompt(weakTopics, targetRole), jsonOnly: true });
   const days = data.days || [];
 
   const plan = await LearningPlan.findOneAndUpdate(
     { userId },
-    { userId, days },
+    { userId, days, topicsFingerprint: fingerprint },
     { upsert: true, new: true }
   );
   return plan;

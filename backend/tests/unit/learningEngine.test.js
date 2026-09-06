@@ -11,6 +11,7 @@ describe('generateLearningPlan', () => {
   beforeEach(() => {
     callAI.mockReset();
     WeaknessTracker.findOne.mockReset();
+    LearningPlan.findOne.mockReset();
     LearningPlan.findOneAndUpdate.mockReset();
   });
 
@@ -22,6 +23,27 @@ describe('generateLearningPlan', () => {
     expect(callAI).not.toHaveBeenCalled();
   });
 
+  test('returns cached plan and skips AI call when weak topics fingerprint matches', async () => {
+    WeaknessTracker.findOne.mockResolvedValue({
+      weakTopics: [
+        { topic: 'Docker', occurrences: 2 },
+        { topic: 'System design', occurrences: 5 },
+      ],
+    });
+    const cachedPlan = {
+      userId: 'user1',
+      days: [{ day: 'Mon', task: 'Study system design' }],
+      topicsFingerprint: 'System design|Docker',
+    };
+    LearningPlan.findOne.mockResolvedValue(cachedPlan);
+
+    const result = await generateLearningPlan('user1', 'Backend Engineer');
+
+    expect(result).toBe(cachedPlan);
+    expect(callAI).not.toHaveBeenCalled();
+    expect(LearningPlan.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
   test('prioritizes the top 5 weak topics by occurrence count and upserts the plan', async () => {
     WeaknessTracker.findOne.mockResolvedValue({
       weakTopics: [
@@ -30,6 +52,7 @@ describe('generateLearningPlan', () => {
         { topic: 'Recursion', occurrences: 1 },
       ],
     });
+    LearningPlan.findOne.mockResolvedValue(null);
     callAI.mockResolvedValue({ data: { days: [{ day: 'Mon', task: 'Study system design fundamentals' }] } });
     LearningPlan.findOneAndUpdate.mockResolvedValue({ userId: 'user1', days: [{ day: 'Mon', task: 'Study system design fundamentals' }] });
 
@@ -42,7 +65,10 @@ describe('generateLearningPlan', () => {
 
     expect(LearningPlan.findOneAndUpdate).toHaveBeenCalledWith(
       { userId: 'user1' },
-      expect.objectContaining({ userId: 'user1' }),
+      expect.objectContaining({
+        userId: 'user1',
+        topicsFingerprint: 'System design|Docker|Recursion',
+      }),
       expect.objectContaining({ upsert: true, new: true })
     );
     expect(result.days).toHaveLength(1);

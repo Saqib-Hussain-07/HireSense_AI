@@ -7,10 +7,12 @@ export default function GrowthPage() {
   const { data: tracker, isLoading: loadingTracker } = useQuery({
     queryKey: ['weaknessTracker'],
     queryFn: api.getWeaknessTracker,
+    staleTime: 5 * 60 * 1000,
   });
   const { data: plan, isLoading: loadingPlan } = useQuery({
     queryKey: ['learningPlan'],
     queryFn: api.getLearningPlan,
+    staleTime: 5 * 60 * 1000,
   });
 
   const sortedTopics = [...(tracker?.weakTopics || [])].sort((a, b) => b.occurrences - a.occurrences);

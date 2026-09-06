@@ -6,7 +6,7 @@ const { generateLearningPlan } = require('../services/learningEngine');
 const router = express.Router();
 router.use(requireAuth);
 
-// GET /api/learning-plan — regenerates from current weak topics each call
+// GET /api/learning-plan — returns cached plan if weak topics unchanged, or regenerates if changed
 router.get('/', async (req, res) => {
   try {
     const user = await User.findById(req.userId);
