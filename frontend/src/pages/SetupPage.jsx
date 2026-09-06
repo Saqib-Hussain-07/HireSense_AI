@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { INTERVIEW_MODES, ANALYSIS_STEPS } from '../components/setup/setupConstants';
 import ChoiceStep from '../components/setup/ChoiceStep';
@@ -11,6 +12,7 @@ import ConfigStep from '../components/setup/ConfigStep';
 
 export default function SetupPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Step tracking: 0=choice, 1=resume, 2=jd, 3=analysing, 4=report, 5=interview config
   const [step, setStep] = useState(0);
@@ -126,6 +128,7 @@ export default function SetupPage() {
       try {
         const match = await api.createMatch({ resumeId: resume._id, jdId: jdResult._id });
         setMatchReport(match);
+        queryClient.invalidateQueries({ queryKey: ['resumeVersions'] });
       } catch (_e) {
         // Non-blocking — proceed with synthesised report
         setMatchReport({ _synth: true, resumeData: resume, jdData: jdResult });

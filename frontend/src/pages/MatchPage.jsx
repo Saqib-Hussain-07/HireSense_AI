@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader.jsx';
 import { api } from '../lib/api';
 
 export default function MatchPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: versions } = useQuery({ queryKey: ['resumeVersions'], queryFn: api.getResumeVersions });
   const { data: jds } = useQuery({ queryKey: ['jobDescriptions'], queryFn: api.getJDs });
   
@@ -29,6 +30,8 @@ export default function MatchPage() {
     try {
       const report = await api.createMatch({ resumeId, jdId });
       setResult(report);
+      queryClient.invalidateQueries({ queryKey: ['resumeVersions'] });
+      queryClient.invalidateQueries({ queryKey: ['latestMatch'] });
     } catch (err) {
       setError(err.message);
     } finally {
