@@ -7,10 +7,11 @@ import App from './App.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import './index.css';
 
-// Primary Clerk Publishable Key with safe fallback for zero-config deployments (e.g. Vercel)
-const PUBLISHABLE_KEY =
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ||
-  'pk_test_bmF0dXJhbC1qYXZlbGluLTk4MTMuY2xlcmsuYWNjb3VudHMuZGV2JA';
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+if (!PUBLISHABLE_KEY) {
+  throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY. Add it to frontend/.env.local.');
+}
 
 class RootErrorBoundary extends React.Component {
   constructor(props) {

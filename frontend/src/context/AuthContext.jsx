@@ -18,6 +18,7 @@ export function AuthProvider({ children }) {
     if (!clerkLoaded) return;
 
     if (!clerkSignedIn) {
+      localStorage.removeItem('hiresense_token');
       setUser(null);
       syncedUserIdRef.current = null;
       setIsSyncing(false);
@@ -44,6 +45,9 @@ export function AuthProvider({ children }) {
 
         const data = await api.clerkSession({ sessionToken, email, name });
         if (isMounted && data?.user) {
+          if (data.token) {
+            localStorage.setItem('hiresense_token', data.token);
+          }
           setUser(data.user);
           syncedUserIdRef.current = clerkUser?.id;
         }

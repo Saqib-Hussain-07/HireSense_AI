@@ -46,8 +46,9 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
 
         {/* 2. Auth */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
+        {/* Clerk uses nested paths for verification and OAuth callback steps. */}
+        <Route path="/login/*" element={<Login />} />
+        <Route path="/signup/*" element={<Signup />} />
 
         {/* 3. Setup — combined resume + JD + interview config (primary flow) */}
         <Route
